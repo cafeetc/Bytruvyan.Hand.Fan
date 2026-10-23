@@ -91,6 +91,18 @@ body {
   fill: var(--plug-fill);
 }
 
+/* Subpyxl Joint Representation: Child joint is 10 subpyxls (purple), Parent is 6x6 (green getting yellow toward center) */
+.child-joint {
+  fill: #8b25e0;
+  stroke: #7c3aed;
+  stroke-width: 0.008;
+}
+
+.parent-joint {
+  stroke: #166534;
+  stroke-width: 0.005;
+}
+
 .wrist-sock {
   stroke: var(--wrist-stroke);
   stroke-width: 0.04;
@@ -133,4 +145,9 @@ body {
 
 .hit:active {
   cursor: grabbing;
+}
+
+/* Subtle optical softness: slight blur akin to a well-preserved film (no artificial artifacts) */
+#hand {
+  filter: url(#filmBlur);
 }

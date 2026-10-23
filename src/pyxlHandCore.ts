@@ -43,10 +43,10 @@ export const CONTROLS_FINGER_ORDER: FingerName[] = ['index', 'ring', 'pinky', 't
 
 export const BONES: Record<FingerName, number[]> = {
   middle: [4, 2, 1, 1],
-  ring:   [3.75, 1.75, 1, 1],
-  index:  [3.5, 2, 0.75, 0.75],
-  pinky:  [3.25, 1.75, 0.75, 0.75],
-  thumb:  [2, 1, 1],
+  ring:   [3.75, 1.875, 0.9375, 0.9375],
+  index:  [3.5, 1.75, 0.875, 0.875],
+  pinky:  [3.25, 1.625, 0.8125, 0.8125],
+  thumb:  [2, 1, 1, 1],
 };
 
 export const SUM: Record<FingerName, number> = {
@@ -54,7 +54,7 @@ export const SUM: Record<FingerName, number> = {
   ring:   7.5,
   index:  7,
   pinky:  6.5,
-  thumb:  4,
+  thumb:  5,
 };
 
 export const KN: Record<FingerName, number> = {
@@ -99,8 +99,42 @@ export function calcA(d: FingerName, state: State): number {
   return (LIM[d] * effectiveSplay) / 100 + state.tilt + (state.rot[d] ?? 0);
 }
 
-export function wid(d: FingerName, wscale: boolean): number {
-  return wscale && d !== 'thumb' ? (SUM[d] - KN[d]) / 7 : 1;
+/**
+ * Distal and bone width math based on foundational pyxl unit:
+ * Middle finger is the master reference:
+ * - Distal bone is 1 pyxl (100 subpyxls).
+ * - Distal fits in an invisible 1x1 square with 12.5% of empty space on each side.
+ *   Width = 1.0 - (2 * 0.125) = 0.75 pyxl (75 subpyxls).
+ * - Middle bone is 1x1 square (length 1, width fits in 1).
+ * - Proximal bone is 2x1 (length 2, width fits in 1).
+ * - Metacarpal bone is 4:1 (length 4, width fits in 1).
+ * Other fingers are proportionally scaled from the middle finger (scale = SUM[d] / SUM.middle).
+ */
+export function wid(d: FingerName, wscale: boolean = false): number {
+  const baseW = 0.75;
+  const scale = d === 'thumb' ? 0.9 : (SUM[d] / SUM.middle);
+  const standardW = baseW * scale;
+  if (wscale && d !== 'thumb') {
+    return standardW * ((SUM[d] - KN[d]) / 7);
+  }
+  return standardW;
+}
+
+/**
+ * Returns the bounding box specifications for a bone segment in finger coordinates.
+ * In all cases, bone shapes fit inside this box.
+ */
+export function getBoneBox(d: FingerName, i: number): { boxW: number; boxH: number; emptyMargin: number } {
+  const bones = BONES[d];
+  const len = bones[i];
+  const scale = d === 'thumb' ? 1.0 : (SUM[d] / SUM.middle);
+  const boxW = 1.0 * scale;
+  const emptyMargin = 0.125 * boxW;
+  return {
+    boxW,
+    boxH: len,
+    emptyMargin,
+  };
 }
 
 export function reach(d: FingerName, o: number): number {
@@ -378,7 +412,7 @@ export const PRESET_POSES: Record<string, Partial<State>> = {
     fs: { index: -5, ring: 5, pinky: 12 },
     rot: { thumb: -10, index: 2, middle: 0, ring: -3, pinky: -8 },
     cj: {
-      thumb: [22, 18, 0],
+      thumb: [22, 18, 14],
       index: [25, 20, 15],
       middle: [28, 22, 18],
       ring: [32, 25, 20],
@@ -393,7 +427,7 @@ export const PRESET_POSES: Record<string, Partial<State>> = {
     fs: { index: 0, ring: 0, pinky: 0 },
     rot: { thumb: -35, index: -5, middle: 0, ring: 4, pinky: 8 },
     cj: {
-      thumb: [45, 60, 0],
+      thumb: [45, 55, 45],
       index: [85, 88, 85],
       middle: [88, 90, 88],
       ring: [88, 90, 88],
@@ -408,7 +442,7 @@ export const PRESET_POSES: Record<string, Partial<State>> = {
     fs: { index: 0, ring: 0, pinky: 0 },
     rot: { thumb: -25, index: 0, middle: 4, ring: 6, pinky: 10 },
     cj: {
-      thumb: [40, 45, 0],
+      thumb: [40, 45, 30],
       index: [0, 0, 0],
       middle: [85, 88, 85],
       ring: [85, 88, 85],
@@ -423,7 +457,7 @@ export const PRESET_POSES: Record<string, Partial<State>> = {
     fs: { index: -15, ring: 0, pinky: 0 },
     rot: { thumb: -30, index: -12, middle: 10, ring: 0, pinky: 5 },
     cj: {
-      thumb: [45, 55, 0],
+      thumb: [45, 55, 35],
       index: [0, 0, 0],
       middle: [0, 0, 0],
       ring: [85, 88, 85],
@@ -453,7 +487,7 @@ export const PRESET_POSES: Record<string, Partial<State>> = {
     fs: { index: -10, ring: 8, pinky: 18 },
     rot: { thumb: -15, index: -10, middle: 5, ring: 12, pinky: 18 },
     cj: {
-      thumb: [50, 40, 0],
+      thumb: [50, 40, 30],
       index: [55, 50, 30],
       middle: [0, 0, 0],
       ring: [5, 5, 0],
@@ -468,11 +502,41 @@ export const PRESET_POSES: Record<string, Partial<State>> = {
     fs: { index: -15, ring: 0, pinky: 20 },
     rot: { thumb: -25, index: -10, middle: 0, ring: 0, pinky: 15 },
     cj: {
-      thumb: [45, 50, 0],
+      thumb: [45, 50, 35],
       index: [0, 0, 0],
       middle: [88, 90, 88],
       ring: [88, 90, 88],
       pinky: [0, 0, 0],
+    },
+  },
+  'Shaka / Hang Loose': {
+    splay: 50,
+    thumb: 40,
+    wrist: 0,
+    tilt: 0,
+    fs: { index: 0, ring: 0, pinky: 35 },
+    rot: { thumb: 25, index: 0, middle: 0, ring: 0, pinky: 20 },
+    cj: {
+      thumb: [0, 0, 0],
+      index: [88, 90, 88],
+      middle: [88, 90, 88],
+      ring: [88, 90, 88],
+      pinky: [0, 0, 0],
+    },
+  },
+  'Pinch / Grasp': {
+    splay: 20,
+    thumb: -5,
+    wrist: 0,
+    tilt: -5,
+    fs: { index: -5, ring: 5, pinky: 10 },
+    rot: { thumb: -20, index: -5, middle: 10, ring: 15, pinky: 20 },
+    cj: {
+      thumb: [35, 45, 30],
+      index: [40, 50, 35],
+      middle: [70, 75, 70],
+      ring: [80, 85, 80],
+      pinky: [85, 88, 85],
     },
   },
   'Open Splay (Fan)': {

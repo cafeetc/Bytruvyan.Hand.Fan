@@ -238,6 +238,9 @@ details[open] summary { margin-bottom: 8px; color: var(--accent); }
 #rd strong { color: var(--fg); }
 
 /* SVG Canvas Elements */
+#hand {
+  filter: url(#filmBlur);
+}
 .bone {
   stroke: var(--bone-stroke);
   stroke-width: 0.05;
@@ -262,6 +265,15 @@ details[open] summary { margin-bottom: 8px; color: var(--accent); }
 }
 .plug {
   fill: var(--plug-fill);
+}
+.child-joint {
+  fill: #8b25e0;
+  stroke: #7c3aed;
+  stroke-width: 0.008;
+}
+.parent-joint {
+  stroke: #166534;
+  stroke-width: 0.004;
 }
 .wrist-sock {
   stroke: var(--wrist-stroke);
@@ -311,6 +323,17 @@ details[open] summary { margin-bottom: 8px; color: var(--accent); }
 <div id="stage">
   <button id="themeToggle" data-theme-btn>Theme</button>
   <svg id="s" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="filmBlur" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="0.0055" />
+      </filter>
+      <radialGradient id="parentJointGrad" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+        <stop offset="0%" stop-color="#ffff33" />
+        <stop offset="35%" stop-color="#adff2f" />
+        <stop offset="70%" stop-color="#65a30d" />
+        <stop offset="100%" stop-color="#15803d" />
+      </radialGradient>
+    </defs>
     <g id="grid"></g>
     <g id="hand"></g>
   </svg>
@@ -331,12 +354,12 @@ details[open] summary { margin-bottom: 8px; color: var(--accent); }
   const STORAGE_KEY = '***';
   const BONES = {
     middle: [4, 2, 1, 1],
-    ring:   [3.75, 1.75, 1, 1],
-    index:  [3.5, 2, 0.75, 0.75],
-    pinky:  [3.25, 1.75, 0.75, 0.75],
-    thumb:  [2, 1, 1]
+    ring:   [3.75, 1.875, 0.9375, 0.9375],
+    index:  [3.5, 1.75, 0.875, 0.875],
+    pinky:  [3.25, 1.625, 0.8125, 0.8125],
+    thumb:  [2, 1, 1, 1]
   };
-  const SUM = { middle: 8, ring: 7.5, index: 7, pinky: 6.5, thumb: 4 };
+  const SUM = { middle: 8, ring: 7.5, index: 7, pinky: 6.5, thumb: 5 };
   const KN  = { middle: 1, ring: 1, index: 1, pinky: 1, thumb: 0.5 };
   const LIM = { thumb: -120, index: -30, middle: 0, ring: 30, pinky: 90 };
   const R = Math.PI / 180;
@@ -351,7 +374,15 @@ details[open] summary { margin-bottom: 8px; color: var(--accent); }
     const extra = d === 'thumb' ? st.thumb : (d === 'middle' ? 0 : (st.fs[d] || 0));
     return (LIM[d] * clamp(st.splay + extra, -100, 100)) / 100 + st.tilt + (st.rot[d] || 0);
   }
-  function wid(d, wscale) { return wscale && d !== 'thumb' ? (SUM[d] - KN[d]) / 7 : 1; }
+  function wid(d, wscale) {
+    const baseW = 0.75;
+    const scale = d === 'thumb' ? 0.9 : (SUM[d] / SUM.middle);
+    const standardW = baseW * scale;
+    if (wscale && d !== 'thumb') {
+      return standardW * ((SUM[d] - KN[d]) / 7);
+    }
+    return standardW;
+  }
   function reach(d, o) { return SUM[d] - (o > 0 ? KN[d] : 0); }
 
   function def() {
@@ -527,23 +558,36 @@ details[open] summary { margin-bottom: 8px; color: var(--accent); }
     const J = (i === 0 ? knOvl : 0);
     const top = -(a + len);
     const bot = -a;
-    const sr = (d === 'thumb' ? 0.125 : 0.25);
+    const sr = (d === 'thumb' ? 0.125 : 0.22) * (SUM[d] / 8);
     const jr = (i === 0 ? KN[d] / 2 : sr);
 
+    const boxScale = (d === 'thumb' ? 1.0 : (SUM[d] / SUM.middle));
+    const boxW = 1.0 * boxScale;
+    const emptyMargin = 0.125 * boxW;
+
     let html = '';
+    // bone bounding box guide
+    if (state.boxes) {
+      html += \`<rect class="box" x="\${-boxW/2}" y="\${top}" width="\${boxW}" height="\${len}" stroke-dasharray="0.06, 0.06" />\`;
+      if (i === n - 1) {
+        html += \`<line class="box" x1="\${-boxW/2 + emptyMargin}" y1="\${top}" x2="\${-boxW/2 + emptyMargin}" y2="\${bot}" stroke-opacity="0.45" stroke-dasharray="0.03, 0.03" />\`;
+        html += \`<line class="box" x1="\${boxW/2 - emptyMargin}" y1="\${top}" x2="\${boxW/2 - emptyMargin}" y2="\${bot}" stroke-opacity="0.45" stroke-dasharray="0.03, 0.03" />\`;
+      }
+    }
+
     // seam buffer
     if (i > 0) {
-      html += \`<rect class="buff" x="\${-w/2}" y="\${-sr}" width="\${w}" height="\${sr*2}" />\`;
+      html += \`<rect class="buff" x="\${-w/2}" y="\${-sr}" width="\${w}" height="\${sr*2}" rx="0.03" />\`;
     }
 
     // bone rect or tip cap
     if (i === n - 1) {
-      const rCap = w * 0.375;
+      const rCap = w * 0.45;
       const xL = -w/2, xR = w/2;
       const dPath = \`M \${xL} \${bot} L \${xL} \${top + rCap} A \${rCap} \${rCap} 0 0 1 \${xL + rCap} \${top} L \${xR - rCap} \${top} A \${rCap} \${rCap} 0 0 1 \${xR} \${top + rCap} L \${xR} \${bot} Z\`;
       html += \`<path class="bone" d="\${dPath}" />\`;
     } else {
-      html += \`<rect class="bone" x="\${-w/2}" y="\${top}" width="\${w}" height="\${len}" />\`;
+      html += \`<rect class="bone" x="\${-w/2}" y="\${top}" width="\${w}" height="\${len}" rx="0.04" />\`;
     }
 
     // shaft hit rect (the bone-drag fix)
@@ -556,9 +600,9 @@ details[open] summary { margin-bottom: 8px; color: var(--accent); }
       const nextGroup = buildChain(d, i + 1, ang);
       html += \`<g transform="translate(0, \${top + J/2}) rotate(\${nextAng})">\`;
       html += nextGroup;
-      // Joint circles (above shaft in z-order)
-      html += \`<circle class="sock" cx="0" cy="0" r="\${jr}" />\`;
-      html += \`<circle class="plug" cx="0" cy="0" r="\${jr * 0.3}" />\`;
+      // Joint circles (child joint 10 subpyxl purple circle, parent joint 6x6 green circle getting yellow toward center)
+      html += '<circle class="child-joint" cx="0" cy="0" r="0.05" />';
+      html += '<circle class="parent-joint" cx="0" cy="0" r="0.03" fill="url(#parentJointGrad)" />';
       html += \`<circle class="hit" cx="0" cy="0" r="\${Math.max(jr, 0.3)}" data-d="\${d}" data-j="\${i}" />\`;
       html += \`</g>\`;
     }
@@ -859,12 +903,8 @@ details[open] summary { margin-bottom: 8px; color: var(--accent); }
       dtBody.style.marginTop = '6px';
 
       makeSlider(dtBody, 'Knuckle', cLo, cHi, state.cj[d][0], v => { state.cj[d][0] = v; draw(); }, \`cj_\${d}_0\`);
-      if (d !== 'thumb') {
-        makeSlider(dtBody, 'Middle Joint', cLo, cHi, state.cj[d][1], v => { state.cj[d][1] = v; draw(); }, \`cj_\${d}_1\`);
-        makeSlider(dtBody, 'Tip Joint', cLo, cHi, state.cj[d][2], v => { state.cj[d][2] = v; draw(); }, \`cj_\${d}_2\`);
-      } else {
-        makeSlider(dtBody, 'Tip Joint', cLo, cHi, state.cj[d][1], v => { state.cj[d][1] = v; draw(); }, \`cj_\${d}_1\`);
-      }
+      makeSlider(dtBody, 'Middle Joint', cLo, cHi, state.cj[d][1], v => { state.cj[d][1] = v; draw(); }, \`cj_\${d}_1\`);
+      makeSlider(dtBody, 'Tip Joint', cLo, cHi, state.cj[d][2], v => { state.cj[d][2] = v; draw(); }, \`cj_\${d}_2\`);
       dt.appendChild(dtBody);
       fGrp.appendChild(dt);
 
@@ -1016,9 +1056,9 @@ details[open] summary { margin-bottom: 8px; color: var(--accent); }
 
   function renderRdNotes() {
     rd.innerHTML = \`
-      <strong>Pyxl Hand Rig v2 — Canonical Rules & Reach</strong><br>
-      • <strong>Reachable lengths:</strong> Middle (8 raw, 7 functional) | Ring (7.5 raw, 6.5 functional) | Index (7 raw, 6.0 functional) | Pinky (6.5 raw, 5.5 functional) | Thumb (4 raw, 3.5 functional)<br>
-      • <strong>Geometry:</strong> 1 pyxl = 100px. Origin at Distal center. Wrist hub at bottom of Bird Metacarpal. Knuckle snap circle (1 diam, 0.5 radius) centers at y = -3.5. Seam buffers (0.5 diam) at y = -0.5 and -1.5. Limiting angles: Curl -20°..90° (thumb 80°), Rotation ±45° (thumb ±60°), Expert ±90°.
+      <strong>Pyxl Hand Rig v2 — Master Proportionality & Reach</strong><br>
+      • <strong>Reachable lengths:</strong> Middle (8 raw, 7 functional) | Ring (7.5 raw, 6.5 functional) | Index (7 raw, 6.0 functional) | Pinky (6.5 raw, 5.5 functional) | Thumb (5 raw, 4.5 functional)<br>
+      • <strong>Proportions:</strong> Middle finger sets master proportions (4:2:1:1). Metacarpal 4:1 box, Proximal 2:1 box, Middle 1:1 box, Distal 1:1 invisible square with 12.5% empty space on each side (width = 0.75 pyxl / 75 subpyxls). Other fingers scaled from Middle. Shapes fit inside boxes in all cases.
     \`;
   }
 

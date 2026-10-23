@@ -3,7 +3,7 @@
  * Implements client-side GIF, APNG, ZIP, PNG, and SVG generation with zero external dependencies.
  */
 
-import { State, defaultState, cleanPose, norm, clamp, HandBuild, BONES, FINGER_ORDER, calcA, wid, KN, SUM } from './pyxlHandCore.ts';
+import { State, defaultState, cleanPose, norm, clamp, HandBuild, BONES, FINGER_ORDER, calcA, wid, KN, SUM, getBoneBox } from './pyxlHandCore.ts';
 
 // CRC-32 Lookup Table
 const CRC_TABLE = (() => {
@@ -374,15 +374,28 @@ export function generateHandSvgMarkup(state: State): string {
     const J = i === 0 ? knOvl : 0;
     const top = -(a + len);
     const bot = -a;
-    const sr = d === 'thumb' ? 0.125 : 0.25;
+    const sr = (d === 'thumb' ? 0.125 : 0.22) * (SUM[d] / 8);
     const jr = i === 0 ? KN[d] / 2 : sr;
 
+    const box = getBoneBox(d, i);
+    const boxW = box.boxW;
+
     let html = '';
+
+    // Bone Bounding Box guide (when state.boxes is on: 4:1, 2:1, 1:1, 1:1 with 12.5% margins)
+    if (state.boxes) {
+      html += `<rect class="box" x="${-boxW / 2}" y="${top}" width="${boxW}" height="${len}" stroke-dasharray="0.06, 0.06" />`;
+      if (i === n - 1) {
+        html += `<line class="box" x1="${-boxW / 2 + box.emptyMargin}" y1="${top}" x2="${-boxW / 2 + box.emptyMargin}" y2="${bot}" stroke-opacity="0.45" stroke-dasharray="0.03, 0.03" />`;
+        html += `<line class="box" x1="${boxW / 2 - box.emptyMargin}" y1="${top}" x2="${boxW / 2 - box.emptyMargin}" y2="${bot}" stroke-opacity="0.45" stroke-dasharray="0.03, 0.03" />`;
+      }
+    }
+
     if (i > 0) {
-      html += `<rect class="buff" x="${-w / 2}" y="${-sr}" width="${w}" height="${sr * 2}" />`;
+      html += `<rect class="buff" x="${-w / 2}" y="${-sr}" width="${w}" height="${sr * 2}" rx="0.03" />`;
     }
     if (i === n - 1) {
-      const rCap = w * 0.375;
+      const rCap = w * 0.45;
       const xL = -w / 2, xR = w / 2;
       const dPath = `M ${xL} ${bot} L ${xL} ${top + rCap} A ${rCap} ${rCap} 0 0 1 ${xL + rCap} ${top} L ${xR - rCap} ${top} A ${rCap} ${rCap} 0 0 1 ${xR} ${top + rCap} L ${xR} ${bot} Z`;
       html += `<path class="bone" d="${dPath}" />`;
@@ -394,8 +407,8 @@ export function generateHandSvgMarkup(state: State): string {
       const nextAng = -(state.cj[d][i] || 0);
       html += `<g transform="translate(0, ${top + J / 2}) rotate(${nextAng})">`;
       html += buildChain(d, i + 1);
-      html += `<circle class="sock" cx="0" cy="0" r="${jr}" />`;
-      html += `<circle class="plug" cx="0" cy="0" r="${jr * 0.3}" />`;
+      html += `<circle class="child-joint" cx="0" cy="0" r="0.05" />`;
+      html += `<circle class="parent-joint" cx="0" cy="0" r="0.03" fill="url(#parentJointGrad)" />`;
       html += `</g>`;
     }
     return html;
@@ -421,15 +434,29 @@ export function generateHandSvgMarkup(state: State): string {
 
 export function buildSvgDocument(markup: string, viewBox: string, size = 1024): string {
   const css = `
+    #hand { filter: url(#filmBlur); }
     .bone { stroke: #9d4edd; stroke-width: 0.045; fill: #120e1a; }
     .buff { stroke: rgba(157, 78, 221, 0.45); stroke-width: 0.02; stroke-dasharray: 0.08, 0.08; fill: none; }
     .box { stroke: #adff2f; stroke-width: 0.035; stroke-dasharray: 0.1, 0.1; fill: none; }
-    .sock { stroke: #adff2f; stroke-width: 0.04; fill: #120e1a; }
-    .plug { fill: #adff2f; }
+    .child-joint { fill: #8b25e0; stroke: #7c3aed; stroke-width: 0.008; }
+    .parent-joint { stroke: #166534; stroke-width: 0.004; }
     .wrist-sock { stroke: #ef4444; stroke-width: 0.04; fill: #120e1a; }
     .wrist-plug { fill: #ef4444; }
   `;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${viewBox}"><style>${css}</style>${markup}</svg>`;
+  const defs = `
+    <defs>
+      <filter id="filmBlur" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="0.0055" />
+      </filter>
+      <radialGradient id="parentJointGrad" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+        <stop offset="0%" stop-color="#ffff33" />
+        <stop offset="35%" stop-color="#adff2f" />
+        <stop offset="70%" stop-color="#65a30d" />
+        <stop offset="100%" stop-color="#15803d" />
+      </radialGradient>
+    </defs>
+  `;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${viewBox}"><style>${css}</style>${defs}${markup}</svg>`;
 }
 
 export async function canvasFromMarkup(markup: string, viewBox: string, size: number, opaque = false): Promise<HTMLCanvasElement> {

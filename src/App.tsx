@@ -69,6 +69,8 @@ import {
   Image as ImageIcon,
   FileArchive,
   RefreshCw,
+  Undo2,
+  Redo2,
 } from 'lucide-react';
 
 const STORAGE_KEY = '***';
@@ -138,11 +140,132 @@ export default function App() {
     document.body.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // Clean up animation preview on unmount
+  // History & Undo / Redo state
+  const historyRef = useRef<State[]>([defaultState()]);
+  const historyIndexRef = useRef<number>(0);
+  const [canUndo, setCanUndo] = useState<boolean>(false);
+  const [canRedo, setCanRedo] = useState<boolean>(false);
+  const dragStartStateRef = useRef<State | null>(null);
+  const transitionAnimRef = useRef<number | null>(null);
+  const historyDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Update undo/redo availability flags
+  const updateUndoRedoFlags = useCallback(() => {
+    setCanUndo(historyIndexRef.current > 0);
+    setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+  }, []);
+
+  // Push new state to undo/redo history
+  const pushHistory = useCallback((nextState: State) => {
+    const current = historyRef.current[historyIndexRef.current];
+    if (current && JSON.stringify(cleanPose(current)) === JSON.stringify(cleanPose(nextState))) {
+      return;
+    }
+    const trimmed = historyRef.current.slice(0, historyIndexRef.current + 1);
+    trimmed.push({ ...nextState });
+    if (trimmed.length > 60) {
+      trimmed.shift();
+    }
+    historyRef.current = trimmed;
+    historyIndexRef.current = trimmed.length - 1;
+    updateUndoRedoFlags();
+  }, [updateUndoRedoFlags]);
+
+  // Debounced push for slider adjustments
+  const scheduleHistoryPush = useCallback((s: State) => {
+    if (historyDebounceTimerRef.current) {
+      clearTimeout(historyDebounceTimerRef.current);
+    }
+    historyDebounceTimerRef.current = setTimeout(() => {
+      pushHistory(s);
+    }, 350);
+  }, [pushHistory]);
+
+  // Smoothly interpolate to a target state (for Mirror, Undo, Redo, Preset changes)
+  const animateToState = useCallback((target: State, durationMs = 320, onDone?: () => void) => {
+    if (transitionAnimRef.current) {
+      cancelAnimationFrame(transitionAnimRef.current);
+      transitionAnimRef.current = null;
+    }
+    const from = { ...stateRef.current };
+    const startTime = performance.now();
+
+    const step = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / durationMs);
+      const ease = 0.5 - 0.5 * Math.cos(progress * Math.PI);
+      const interp = interpolatePose(from, target, ease);
+      setState(interp);
+
+      if (progress < 1) {
+        transitionAnimRef.current = requestAnimationFrame(step);
+      } else {
+        setState(target);
+        transitionAnimRef.current = null;
+        if (onDone) onDone();
+      }
+    };
+
+    transitionAnimRef.current = requestAnimationFrame(step);
+  }, []);
+
+  // Undo (with smooth interpolation)
+  const handleUndo = useCallback(() => {
+    if (historyIndexRef.current <= 0) return;
+    historyIndexRef.current -= 1;
+    const target = historyRef.current[historyIndexRef.current];
+    updateUndoRedoFlags();
+    animateToState(target, 320);
+    setCopiedNotification('Undo (interpolated)');
+    setTimeout(() => setCopiedNotification(null), 1500);
+  }, [updateUndoRedoFlags, animateToState]);
+
+  // Redo (with smooth interpolation)
+  const handleRedo = useCallback(() => {
+    if (historyIndexRef.current >= historyRef.current.length - 1) return;
+    historyIndexRef.current += 1;
+    const target = historyRef.current[historyIndexRef.current];
+    updateUndoRedoFlags();
+    animateToState(target, 320);
+    setCopiedNotification('Redo (interpolated)');
+    setTimeout(() => setCopiedNotification(null), 1500);
+  }, [updateUndoRedoFlags, animateToState]);
+
+  // Keyboard shortcut listener: Ctrl+Z / Cmd+Z for Undo, Ctrl+Y / Cmd+Shift+Z for Redo
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+        if (e.key === 'z' || e.key === 'Z') {
+          e.preventDefault();
+          if (e.shiftKey) {
+            handleRedo();
+          } else {
+            handleUndo();
+          }
+        } else if (e.key === 'y' || e.key === 'Y') {
+          e.preventDefault();
+          handleRedo();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleUndo, handleRedo]);
+
+  // Clean up animation preview & transitions on unmount
   useEffect(() => {
     return () => {
       if (previewRafRef.current) {
         cancelAnimationFrame(previewRafRef.current);
+      }
+      if (transitionAnimRef.current) {
+        cancelAnimationFrame(transitionAnimRef.current);
+      }
+      if (historyDebounceTimerRef.current) {
+        clearTimeout(historyDebounceTimerRef.current);
       }
     };
   }, []);
@@ -265,6 +388,7 @@ export default function App() {
     }
 
     if (dragRef.current) {
+      dragStartStateRef.current = { ...stateRef.current };
       svg.setPointerCapture(e.pointerId);
     }
   }, []);
@@ -319,8 +443,14 @@ export default function App() {
     } catch (err) {
       // ignore
     }
+    if (dragStartStateRef.current) {
+      if (JSON.stringify(cleanPose(dragStartStateRef.current)) !== JSON.stringify(cleanPose(stateRef.current))) {
+        pushHistory(stateRef.current);
+      }
+      dragStartStateRef.current = null;
+    }
     updateViewBox();
-  }, [updateViewBox]);
+  }, [updateViewBox, pushHistory]);
 
   // Split bar dragging logic
   const handleSplitPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -348,58 +478,58 @@ export default function App() {
     setTimeout(updateViewBox, 10);
   }, [updateViewBox]);
 
-  // Apply a pose by key
+  // Apply a pose by key (smoothly interpolated)
   const handleApplyPose = useCallback((k: string) => {
     setSelectedPoseKey(k);
     if (!k || k === 'Neutral flat (default)') {
-      setState(prev => ({
+      const reset = {
         ...defaultState(),
-        expert: prev.expert,
-        o: prev.o,
-        wscale: prev.wscale,
-        boxes: prev.boxes,
-        build: prev.build,
-      }));
+        expert: stateRef.current.expert,
+        o: stateRef.current.o,
+        wscale: stateRef.current.wscale,
+        boxes: stateRef.current.boxes,
+        build: stateRef.current.build,
+      };
+      pushHistory(reset);
+      animateToState(reset, 320);
       return;
     }
 
     // Check presets first
     const preset = PRESET_POSES[k];
     if (preset) {
-      setState(prev => {
-        const cleaned = cleanPose(preset);
-        const merged: State = {
-          ...defaultState(),
-          ...cleaned,
-          expert: prev.expert,
-          o: prev.o,
-          wscale: prev.wscale,
-          boxes: prev.boxes,
-          build: prev.build,
-        };
-        return clampStateToLimits(merged);
+      const cleaned = cleanPose(preset);
+      const merged: State = clampStateToLimits({
+        ...defaultState(),
+        ...cleaned,
+        expert: stateRef.current.expert,
+        o: stateRef.current.o,
+        wscale: stateRef.current.wscale,
+        boxes: stateRef.current.boxes,
+        build: stateRef.current.build,
       });
+      pushHistory(merged);
+      animateToState(merged, 320);
       return;
     }
 
     // Check saved poses in localStorage
     const saved = savedPoses[k];
     if (saved) {
-      setState(prev => {
-        const cleaned = cleanPose(saved);
-        const merged: State = {
-          ...defaultState(),
-          ...cleaned,
-          expert: prev.expert,
-          o: prev.o,
-          wscale: prev.wscale,
-          boxes: prev.boxes,
-          build: prev.build,
-        };
-        return clampStateToLimits(merged);
+      const cleaned = cleanPose(saved);
+      const merged: State = clampStateToLimits({
+        ...defaultState(),
+        ...cleaned,
+        expert: stateRef.current.expert,
+        o: stateRef.current.o,
+        wscale: stateRef.current.wscale,
+        boxes: stateRef.current.boxes,
+        build: stateRef.current.build,
       });
+      pushHistory(merged);
+      animateToState(merged, 320);
     }
-  }, [savedPoses]);
+  }, [savedPoses, pushHistory, animateToState]);
 
   // Save current pose
   const handleSavePose = useCallback(() => {
@@ -460,42 +590,49 @@ export default function App() {
     }
   }, [jsonText]);
 
-  // Reset Pose
+  // Reset Pose (smoothly interpolated)
   const handleResetPose = useCallback(() => {
-    setState(prev => ({
+    const reset = {
       ...defaultState(),
-      expert: prev.expert,
-      o: prev.o,
-      wscale: prev.wscale,
-      boxes: prev.boxes,
-      build: prev.build,
-    }));
+      expert: stateRef.current.expert,
+      o: stateRef.current.o,
+      wscale: stateRef.current.wscale,
+      boxes: stateRef.current.boxes,
+      build: stateRef.current.build,
+    };
+    pushHistory(reset);
+    animateToState(reset, 320);
     setSelectedPoseKey('Neutral flat (default)');
-  }, []);
+    setCopiedNotification('Reset to Neutral flat');
+    setTimeout(() => setCopiedNotification(null), 1800);
+  }, [pushHistory, animateToState]);
 
-  // Mirror left/right
+  // Mirror left/right with smooth interpolation (user requirement)
   const handleMirror = useCallback(() => {
-    setState(prev => {
-      const nextFs = {
-        index: -prev.fs.index,
-        ring: -prev.fs.ring,
-        pinky: -prev.fs.pinky,
-      };
-      const nextRot = { ...prev.rot };
-      for (const d of FINGER_ORDER) {
-        nextRot[d] = -prev.rot[d];
-      }
-      return {
-        ...prev,
-        wrist: norm(-prev.wrist),
-        splay: -prev.splay,
-        thumb: -prev.thumb,
-        tilt: -prev.tilt,
-        fs: nextFs,
-        rot: nextRot,
-      };
-    });
-  }, []);
+    const current = stateRef.current;
+    const targetFs = {
+      index: -current.fs.index,
+      ring: -current.fs.ring,
+      pinky: -current.fs.pinky,
+    };
+    const targetRot = { ...current.rot };
+    for (const d of FINGER_ORDER) {
+      targetRot[d] = -current.rot[d];
+    }
+    const target: State = {
+      ...current,
+      wrist: norm(-current.wrist),
+      splay: -current.splay,
+      thumb: -current.thumb,
+      tilt: -current.tilt,
+      fs: targetFs,
+      rot: targetRot,
+    };
+    pushHistory(target);
+    animateToState(target, 350);
+    setCopiedNotification('Mirrored (interpolated)');
+    setTimeout(() => setCopiedNotification(null), 1800);
+  }, [pushHistory, animateToState]);
 
   // Standalone HTML Download
   const handleDownloadStandalone = useCallback(() => {
@@ -996,6 +1133,26 @@ export default function App() {
             ))}
           </div>
 
+          {/* Undo & Redo (Interpolated) in header */}
+          <div className="flex items-center gap-1 border-r border-[var(--border)] pr-2">
+            <button
+              onClick={handleUndo}
+              disabled={!canUndo}
+              className="p-1.5 rounded border border-[var(--border)] hover:border-[var(--accent)] text-[var(--fg-muted)] hover:text-[var(--fg)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              title="Undo (Ctrl+Z) — Interpolates to previous pose"
+            >
+              <Undo2 className="w-3.5 h-3.5 text-purple-400" />
+            </button>
+            <button
+              onClick={handleRedo}
+              disabled={!canRedo}
+              className="p-1.5 rounded border border-[var(--border)] hover:border-[var(--accent)] text-[var(--fg-muted)] hover:text-[var(--fg)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              title="Redo (Ctrl+Y / Cmd+Shift+Z) — Interpolates to next pose"
+            >
+              <Redo2 className="w-3.5 h-3.5 text-purple-400" />
+            </button>
+          </div>
+
           {/* Download & Copy Standalone Pure HTML Button */}
           <button
             onClick={handleDownloadStandalone}
@@ -1074,14 +1231,45 @@ export default function App() {
 
           <div className="w-5 h-px bg-[var(--border)] my-0.5"></div>
 
+          {/* Undo Button */}
+          <button
+            onClick={handleUndo}
+            disabled={!canUndo}
+            className="w-9 h-9 rounded-md flex items-center justify-center bg-[var(--bg)] border border-[var(--border)] hover:border-purple-400 text-purple-400 hover:bg-purple-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-xs"
+            title="Undo (Ctrl+Z) — Interpolates to previous pose"
+          >
+            <Undo2 className="w-4 h-4" />
+          </button>
+
+          {/* Redo Button */}
+          <button
+            onClick={handleRedo}
+            disabled={!canRedo}
+            className="w-9 h-9 rounded-md flex items-center justify-center bg-[var(--bg)] border border-[var(--border)] hover:border-purple-400 text-purple-400 hover:bg-purple-500/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-xs"
+            title="Redo (Ctrl+Y / Cmd+Shift+Z) — Interpolates to next pose"
+          >
+            <Redo2 className="w-4 h-4" />
+          </button>
+
+          {/* Mirror Button (Interpolated) */}
+          <button
+            onClick={handleMirror}
+            className="w-9 h-9 rounded-md flex items-center justify-center bg-[var(--bg)] border border-[var(--border)] hover:border-[#adff2f] text-[#adff2f] hover:bg-[#adff2f]/10 transition-all shadow-xs"
+            title="Mirror Hand (Smoothly interpolates to mirror pose)"
+          >
+            <FlipHorizontal2 className="w-4 h-4" />
+          </button>
+
           {/* Reset Pose Button */}
           <button
             onClick={handleResetPose}
             className="w-9 h-9 rounded-md flex items-center justify-center bg-[var(--bg)] border border-[var(--border)] hover:border-purple-400 text-purple-400 hover:bg-purple-500/10 transition-all shadow-xs"
-            title="Reset Pose to Neutral Flat (Default)"
+            title="Reset Pose to Neutral Flat (Interpolated)"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
+
+          <div className="w-5 h-px bg-[var(--border)] my-0.5"></div>
 
           {/* Quick Save (+) Button (Auto-incrementing) */}
           <button
@@ -1186,9 +1374,27 @@ export default function App() {
             </h2>
             <div className="flex items-center gap-1">
               <button
+                onClick={handleUndo}
+                disabled={!canUndo}
+                className="text-[10px] px-1.5 py-0.5 rounded border border-[var(--border)] hover:border-[var(--accent)] text-[var(--fg-muted)] hover:text-[var(--fg)] disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
+                title="Undo (Ctrl+Z) — Interpolates to previous pose"
+              >
+                <Undo2 className="w-3 h-3 text-purple-400" />
+                Undo
+              </button>
+              <button
+                onClick={handleRedo}
+                disabled={!canRedo}
+                className="text-[10px] px-1.5 py-0.5 rounded border border-[var(--border)] hover:border-[var(--accent)] text-[var(--fg-muted)] hover:text-[var(--fg)] disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
+                title="Redo (Ctrl+Y / Cmd+Shift+Z) — Interpolates to next pose"
+              >
+                <Redo2 className="w-3 h-3 text-purple-400" />
+                Redo
+              </button>
+              <button
                 onClick={handleResetPose}
                 className="text-[10px] px-1.5 py-0.5 rounded border border-[var(--border)] hover:border-[var(--accent)] flex items-center gap-1"
-                title="Reset to default flat pose"
+                title="Reset to default flat pose (interpolated)"
               >
                 <RotateCcw className="w-3 h-3 text-purple-400" />
                 Reset
@@ -1196,7 +1402,7 @@ export default function App() {
               <button
                 onClick={handleMirror}
                 className="text-[10px] px-1.5 py-0.5 rounded border border-[var(--border)] hover:border-[var(--accent)] flex items-center gap-1"
-                title="Mirror Left/Right hand (negates wrist, splay, thumb, tilt, rot, fs)"
+                title="Mirror Left/Right hand (smoothly interpolates to mirrored pose)"
               >
                 <FlipHorizontal2 className="w-3 h-3 text-[#adff2f]" />
                 Mirror

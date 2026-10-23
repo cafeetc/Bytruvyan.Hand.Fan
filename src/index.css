@@ -1,0 +1,136 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #120e18;
+  --bg-stage: #e2e2e8;
+  --panel: #181322;
+  --border: #2c223c;
+  --border-light: #413259;
+  --fg: #f4f0fa;
+  --fg-muted: #9e91b5;
+  --accent: #a855f7;
+  --accent-hover: #c084fc;
+  --accent-subtle: rgba(168, 85, 247, 0.16);
+  --bone-stroke: #9d4edd;
+  --bone-fill: #120e1a;
+  --buff-stroke: rgba(157, 78, 221, 0.45);
+  --box-stroke: #adff2f;
+  --sock-stroke: #adff2f;
+  --sock-fill: #120e1a;
+  --plug-fill: #adff2f;
+  --grid-unit: #c2c2cc;
+  --axis-stroke: #9898a6;
+  --wrist-stroke: #ef4444;
+  --wrist-fill: #ef4444;
+}
+
+[data-theme="light"] {
+  --bg: #f6f3fa;
+  --bg-stage: #e5e5eb;
+  --panel: #ffffff;
+  --border: #d4c9e4;
+  --border-light: #e4dcf0;
+  --fg: #191224;
+  --fg-muted: #6e6182;
+  --accent: #8b25e0;
+  --accent-hover: #731bc4;
+  --accent-subtle: rgba(139, 37, 224, 0.12);
+  --bone-stroke: #8b25e0;
+  --bone-fill: #161120;
+  --buff-stroke: rgba(110, 97, 130, 0.45);
+  --box-stroke: #65a30d;
+  --sock-stroke: #4d7c0f;
+  --sock-fill: #161120;
+  --plug-fill: #65a30d;
+  --grid-unit: #c2c2cc;
+  --axis-stroke: #9898a6;
+  --wrist-stroke: #dc2626;
+  --wrist-fill: #dc2626;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  user-select: none;
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* SVG Elements matching Spec §8 & §9 */
+.bone {
+  stroke: var(--bone-stroke);
+  stroke-width: 0.04;
+  fill: var(--bone-fill);
+  transition: fill 0.1s;
+}
+
+.buff {
+  stroke: var(--buff-stroke);
+  stroke-width: 0.02;
+  stroke-dasharray: 0.08, 0.08;
+  fill: none;
+}
+
+.box {
+  stroke: var(--box-stroke);
+  stroke-width: 0.035;
+  stroke-dasharray: 0.1, 0.1;
+  fill: none;
+}
+
+.sock {
+  stroke: var(--sock-stroke);
+  stroke-width: 0.04;
+  fill: var(--sock-fill);
+}
+
+.plug {
+  fill: var(--plug-fill);
+}
+
+.wrist-sock {
+  stroke: var(--wrist-stroke);
+  stroke-width: 0.04;
+  fill: var(--bone-fill);
+}
+
+.wrist-plug {
+  fill: var(--wrist-fill);
+}
+
+.g-unit {
+  stroke: var(--grid-unit);
+  stroke-width: 0.018;
+  opacity: 0.7;
+}
+
+.gt,
+.gq {
+  display: none;
+}
+
+.axis {
+  stroke: var(--axis-stroke);
+  stroke-width: 0.035;
+  opacity: 0.9;
+}
+
+.hit {
+  fill: transparent;
+  stroke: transparent;
+  pointer-events: all;
+  cursor: grab;
+}
+
+.hit:hover {
+  stroke: var(--accent);
+  stroke-width: 0.03;
+  stroke-dasharray: 0.08, 0.08;
+}
+
+.hit:active {
+  cursor: grabbing;
+}

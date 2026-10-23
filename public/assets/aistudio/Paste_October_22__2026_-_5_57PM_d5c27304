@@ -1,0 +1,474 @@
+Skip to content
+Pyxl Hand Rig — iPad-ready update
+HTML
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Pyxl Hand Rig</title>
+<style>
+:root{color-scheme:dark;--bg:#0d1117;--panel:#151b23;--panel-2:#1b2430;--line:#303b49;--text:#e8edf4;--muted:#9aa8b8;--accent:#77c8ff;--accent-2:#b1e3ff;--bone:#91a8be;--bone-edge:#d9e6f2;--buff:#b8c8d7;--grid:#293441;--grid-quarter:#202a35;--danger:#ff8f8f;--shadow:0 8px 26px #0004;font:14px/1.4 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+*{box-sizing:border-box}html,body{height:100%;margin:0;background:var(--bg);color:var(--text)}body{overflow:hidden}button,input,select,textarea{font:inherit;color:inherit}button,select,input[type=text],input[type=number],textarea{background:var(--panel-2);border:1px solid var(--line);border-radius:8px}button{padding:8px 11px;cursor:pointer;transition:background .15s,border-color .15s}button:hover{background:#263342;border-color:#536579}button:active{transform:translateY(1px)}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}input[type=text],input[type=number],select{min-height:34px;padding:6px 8px}input[type=range]{accent-color:var(--accent);width:100%;margin:0}textarea{width:100%;min-height:105px;resize:vertical;padding:9px;font:12px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--text)}
+#app{width:100%;height:100%;min-height:0;display:grid;grid-template-rows:minmax(20%,66.667%) 16px minmax(15%,1fr);overflow:hidden}#stage{position:relative;min-height:0;background:radial-gradient(ellipse at 50% 45%,#18222d 0%,#10161e 72%);overflow:hidden}#s{display:block;width:100%;height:100%;touch-action:none;user-select:none;cursor:grab}#s.dragging{cursor:grabbing}#split{z-index:3;background:var(--bg);border-block:1px solid var(--line);cursor:ns-resize;touch-action:none;display:grid;place-items:center}#split:after{content:"";width:42px;height:4px;border-radius:5px;background:#596878;box-shadow:0 -6px #394654,0 6px #394654}#split:hover:after{background:var(--accent);box-shadow:0 -6px #486278,0 6px #486278}#controls{min-height:0;overflow:auto;overscroll-behavior:contain;background:var(--panel);padding:14px 14px 20px;scrollbar-color:#465565 transparent}.controls-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));align-items:start;gap:10px;max-width:1800px;margin:0 auto}.card{min-width:0;padding:12px;background:linear-gradient(145deg,#1a222d,#151b23);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}.card h2{margin:0 0 10px;font-size:13px;font-weight:700;letter-spacing:.045em;text-transform:uppercase;color:#c9d8e7}.card .sub{margin:-4px 0 10px;color:var(--muted);font-size:12px}.row{display:flex;align-items:center;gap:7px;margin:7px 0}.row.wrap{flex-wrap:wrap}.row>label:first-child{min-width:83px;color:var(--muted);font-size:12px}.row input[type=text]{min-width:0;flex:1}.row select{min-width:0;flex:1}.row button{white-space:nowrap}.slider-row{display:grid;grid-template-columns:82px minmax(55px,1fr) 62px;gap:8px;align-items:center;margin:9px 0}.slider-row label{font-size:12px;color:var(--muted)}.slider-row input[type=number]{width:62px;min-height:30px;padding:4px 5px;text-align:right;font-variant-numeric:tabular-nums}.slider-row input[type=range]{height:22px}.check-row{display:flex;align-items:center;gap:8px;margin:8px 0;color:var(--muted);font-size:12px}.check-row input{accent-color:var(--accent)}.button-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.button-row button.primary{background:#173750;border-color:#34698e;color:#d8f1ff}.button-row button.danger{color:var(--danger)}details{border-top:1px solid var(--line);margin-top:10px;padding-top:8px}details summary{cursor:pointer;color:#c9d8e7;font-size:12px;font-weight:600}.details-inner{padding-top:6px}.hint{color:var(--muted);font-size:11px;margin:7px 0 0}.note{position:absolute;bottom:10px;left:12px;right:12px;text-align:center;color:#aab9c8;font-size:11px;pointer-events:none;text-shadow:0 1px 4px #000}.stage-badge{position:absolute;top:10px;left:12px;color:#9fb0c1;font-size:11px;letter-spacing:.08em;text-transform:uppercase;pointer-events:none}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+#grid .gt{stroke:var(--grid);stroke-width:.012;vector-effect:non-scaling-stroke;opacity:.72}#grid .gq{stroke:var(--grid-quarter);stroke-width:.008;vector-effect:non-scaling-stroke;opacity:.65}#grid .axis{stroke:#405061;stroke-width:.018;vector-effect:non-scaling-stroke;opacity:.65}.box{fill:#8bb7d31a;stroke:#8ab8d34b;stroke-width:.025;vector-effect:non-scaling-stroke}.box-grid{stroke:#8ab8d331;stroke-width:.018;vector-effect:non-scaling-stroke}.bone{fill:var(--bone);stroke:var(--bone-edge);stroke-width:.025;vector-effect:non-scaling-stroke}.buff{fill:#d9e8f2;opacity:.18;stroke:#d9e8f2;stroke-width:.018;vector-effect:non-scaling-stroke}.sock{fill:#121922;stroke:#d3e2ef;stroke-width:.035;vector-effect:non-scaling-stroke}.plug{fill:#bfe7ff;stroke:#fff;stroke-width:.012;vector-effect:non-scaling-stroke}.hit{fill:transparent;stroke:transparent;pointer-events:all;cursor:grab}.joint-hit{fill:#fff0;stroke:none;pointer-events:all;cursor:grab}.wrist-ring{fill:#14202a;stroke:var(--accent);stroke-width:.06;vector-effect:non-scaling-stroke}.wrist-dot{fill:var(--accent)}.digit{cursor:grab}
+@media (prefers-color-scheme:light){:root{color-scheme:light;--bg:#e9eef3;--panel:#f7f9fb;--panel-2:#fff;--line:#cbd5df;--text:#182330;--muted:#5f7183;--accent:#087dbb;--bone:#a9bac8;--bone-edge:#536b7e;--buff:#75899a;--grid:#c5d1dc;--grid-quarter:#d9e1e8;--shadow:0 5px 18px #20364b12}#stage{background:radial-gradient(ellipse at 50% 45%,#f8fbfd 0%,#e8eef4 72%)}.card{background:linear-gradient(145deg,#fff,#f1f5f8)}button:hover{background:#edf3f7}textarea{color:#182330}}
+@media(max-width:650px){#app{grid-template-rows:minmax(20%,58%) 16px minmax(20%,1fr)}#controls{padding:10px}.controls-grid{grid-template-columns:repeat(auto-fit,minmax(235px,1fr))}.note{font-size:10px}}
+#app{grid-template-rows:minmax(20%,2fr) 16px minmax(120px,1fr)}
+#app{height:100vh;height:100dvh;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);grid-template-rows:minmax(20%,2fr) 24px minmax(120px,1fr)}
+.note{background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--line);border-radius:8px;padding:6px 10px;max-width:max-content;margin-inline:auto;text-shadow:none;color:var(--muted)}
+#grid .gt{stroke:#79a98a;stroke-width:.014;opacity:.42}
+#grid .gq{stroke:#a78bd0;stroke-width:.012;opacity:.4}
+.buff{fill:none;opacity:.42;stroke:var(--muted);stroke-width:.018;vector-effect:non-scaling-stroke}
+.sock{fill:none;stroke:#38a46a;stroke-width:.04;vector-effect:non-scaling-stroke}
+.plug{fill:#9a5ed0;stroke:#f3e8ff;stroke-width:.012;vector-effect:non-scaling-stroke}
+.bone{fill:var(--bone);fill-opacity:.66;stroke:var(--bone-edge);stroke-width:.025;vector-effect:non-scaling-stroke}
+:root{color-scheme:light dark;--bg:#11101c;--panel:#19172a;--panel-2:#24213a;--line:#393653;--text:#f0eeff;--muted:#aaa5c3;--accent:#9a8cff;--accent-2:#c4b8ff;--bone:#a4accd;--bone-edge:#e0ddff;--grid:#393451;--grid-quarter:#2c2941;--danger:#ff91ab;--joint:#8e7df2;--plug:#c39aff;--shadow:0 8px 26px #09071470}
+@media(prefers-color-scheme:light){:root{--bg:#f0effa;--panel:#faf9ff;--panel-2:#fff;--line:#d8d5e9;--text:#292642;--muted:#706b8c;--accent:#7061e8;--accent-2:#a394ff;--bone:#b2b5d1;--bone-edge:#62618e;--grid:#dddaf0;--grid-quarter:#e9e6f6;--danger:#c23867;--joint:#6b58df;--plug:#9a60d5;--shadow:0 5px 18px #342c6212}#stage{background:radial-gradient(ellipse at 50% 45%,#fbfaff 0%,#eeedf8 72%)}}
+#stage{background:radial-gradient(ellipse at 50% 45%,#211d38 0%,#11101c 74%)}
+@media(prefers-color-scheme:light){#stage{background:radial-gradient(ellipse at 50% 45%,#fbfaff 0%,#eeedf8 72%)}}
+.sock{stroke:var(--joint)}
+.plug{fill:var(--plug);stroke:#eee9ff}
+.mode-toolbar{position:absolute;z-index:5;right:max(12px,env(safe-area-inset-right,0px));top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:6px;padding:7px;background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);backdrop-filter:blur(12px)}
+.tool-icon{width:40px;height:40px;min-height:40px;padding:7px;margin:0;display:grid;place-items:center;background:transparent;border:1px solid transparent;border-radius:10px;color:var(--muted)}
+.tool-icon:hover{background:var(--panel-2);color:var(--text);border-color:var(--line)}
+.tool-icon[aria-pressed=true]{color:var(--accent);background:color-mix(in srgb,var(--accent) 17%,transparent);border-color:var(--accent)}
+.tool-icon svg{width:22px;height:22px;display:block;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tool-icon .fill-icon{fill:currentColor;stroke:none}
+.tool-sep{height:1px;background:var(--line);margin:2px 3px}
+@media(pointer:coarse){.tool-icon{width:48px;height:48px;min-height:48px;padding:9px}#split{min-height:24px}#split:after{width:56px}button{min-height:44px}select,input[type=text],input[type=number]{min-height:42px}input[type=range]{height:32px}#controls{padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}}
+</style>
+</head>
+<body>
+<main id="app" aria-label="Pyxl Hand Rig">
+  <section id="stage" aria-label="Poseable hand canvas">
+    <div class="stage-badge">Pyxl Hand Rig · drag bones, joints, or wrist</div>
+    <svg id="s" role="img" aria-label="Interactive articulated hand. Drag a bone or joint to pose it." xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="modeToolbar" class="mode-toolbar" role="toolbar" aria-label="Hand build and pose actions"></div>
+    <div id="rd" class="note" aria-live="polite">Functional reach in pyxls will appear here.</div>
+  </section>
+  <div id="split" role="separator" aria-label="Resize canvas and controls" aria-orientation="horizontal" tabindex="0"></div>
+  <section id="controls" aria-label="Hand rig controls"><div class="controls-grid" id="controlGrid"></div></section>
+</main>
+<script>
+(()=>{'use strict';
+const D=['index','middle','ring','pinky','thumb'];
+const DRAW_ORDER=['index','middle','ring','pinky','thumb'];
+const CONTROL_ORDER=['index','ring','pinky','thumb','middle'];
+const MODES={standard:{label:'Full hand',digits:['index','middle','ring','pinky','thumb']},claw:{label:'Claw',digits:['middle','thumb']},trident:{label:'Trident',digits:['middle','ring','thumb']},mickey:{label:"Mickey's Glove",digits:['index','middle','ring','thumb']}};
+const BONES={middle:[4,2,1,1],ring:[3.75,1.75,1,1],index:[3.5,2,.75,.75],pinky:[3.25,1.75,.75,.75],thumb:[2,1,1]};
+const KN={middle:1,ring:1,index:1,pinky:1,thumb:.5};
+const LIM={thumb:-120,index:-30,middle:0,ring:30,pinky:90};
+const SUM=Object.fromEntries(D.map(d=>[d,BONES[d].reduce((a,b)=>a+b,0)]));
+const STORE_KEY='pyxl-hand-poses', LEGACY_STORE_KEY='***';
+const R=Math.PI/180, WRIST_Y=7.5;
+const svg=document.getElementById('s'), stage=document.getElementById('stage'), app=document.getElementById('app'), split=document.getElementById('split'), controlGrid=document.getElementById('controlGrid');
+const byId=id=>document.getElementById(id);
+const clamp=(v,lo,hi)=>Math.min(hi,Math.max(lo,Number.isFinite(Number(v))?Number(v):0));
+const round=v=>Math.round(Number(v)||0);
+const norm=a=>((a+540)%360)-180;
+const copy=o=>JSON.parse(JSON.stringify(o));
+const def=()=>({mode:'standard',expert:false,splay:30,thumb:10,fs:{index:0,ring:0,pinky:0},wrist:0,tilt:0,o:.5,wscale:false,boxes:true,cj:{thumb:[0,0,0],index:[0,0,0],middle:[0,0,0],ring:[0,0,0],pinky:[0,0,0]},rot:{thumb:0,index:0,middle:0,ring:0,pinky:0}});
+let state=def(), saved={}, initialized=false, gridDirty=true, drag=null, cachedCTM=null, raf=0, pointerLatest=null, W=0, viewBoxNow=null, frozenViewBox=null, previewRaf=0, previewBuilding=false, exportBusy=false;
+const inputs=[],checks=[];
+function countJ(d){return BONES[d].length-1}
+function curlIndex(d,j){return j}
+function cRange(d){return state.expert?[-90,90]:[-20,d==='thumb'?80:90]}
+function rRange(d){return state.expert?[-90,90]:[-(d==='thumb'?60:45),d==='thumb'?60:45]}
+function effectiveSplay(d){return clamp(state.splay+(d==='thumb'?state.thumb:state.fs[d]||0),-100,100)}
+function A(d){return LIM[d]*effectiveSplay(d)/100+state.tilt+(state.rot[d]||0)}
+function jointOverlap(d){return state.o>0?KN[d]:0}
+function width(d){return state.wscale&&d!=='thumb'?(SUM[d]-KN[d])/7:1}
+function reach(d){return SUM[d]-jointOverlap(d)}
+function clean(v){
+  const x=def(); if(!v||typeof v!=='object')return x;
+  x.mode=Object.hasOwn(MODES,v.mode)?v.mode:'standard';x.expert=!!v.expert;x.splay=round(clamp(v.splay,-100,100));x.thumb=round(clamp(v.thumb,-100,100));
+  x.wrist=round(clamp(v.wrist,-180,180));x.tilt=round(clamp(v.tilt,-30,30));x.o=v.o===undefined?x.o:Number(v.o)===.5?.5:0;x.wscale=v.wscale===undefined?x.wscale:!!v.wscale;x.boxes=v.boxes===undefined?x.boxes:!!v.boxes;
+  for(const d of ['index','ring','pinky'])x.fs[d]=round(clamp(v.fs?.[d],-100,100));
+  for(const d of D){x.rot[d]=round(clamp(v.rot?.[d],...rRangeFor(x,d)));const arr=Array.isArray(v.cj?.[d])?[...v.cj[d]]:Array.isArray(v.curl?.[d])?[...v.curl[d]]:[];if(d==='thumb'&&arr[1]===undefined&&arr[2]!==undefined)arr[1]=arr[2];if(d==='thumb'&&arr[1]===0&&arr[2]!==undefined&&arr[2]!==0)arr[1]=arr[2];for(let j=0;j<3;j++)x.cj[d][j]=round(clamp(arr[j],...cRangeFor(x,d)));}
+  return x;
+}
+function cRangeFor(s,d){return s.expert?[-90,90]:[-20,d==='thumb'?80:90]}
+function rRangeFor(s,d){return s.expert?[-90,90]:[-(d==='thumb'?60:45),d==='thumb'?60:45]}
+function clampers(){
+  state.splay=round(clamp(state.splay,-100,100));state.thumb=round(clamp(state.thumb,-100,100));state.wrist=round(clamp(state.wrist,-180,180));state.tilt=round(clamp(state.tilt,-30,30));state.o=Number(state.o)===.5?.5:0;
+  for(const d of ['index','ring','pinky'])state.fs[d]=round(clamp(state.fs[d],-100,100));
+  for(const d of D){state.rot[d]=round(clamp(state.rot[d],...rRange(d)));for(let j=0;j<3;j++)state.cj[d][j]=round(clamp(state.cj[d][j],...cRange(d)));}
+}
+function safeRead(){try{const parse=k=>{const raw=localStorage.getItem(k);if(!raw)return{};const value=JSON.parse(raw);return value&&typeof value==='object'&&!Array.isArray(value)?value:{}};saved={...parse(LEGACY_STORE_KEY),...parse(STORE_KEY)};if(!localStorage.getItem(STORE_KEY)&&Object.keys(saved).length)localStorage.setItem(STORE_KEY,JSON.stringify(saved))}catch{saved={}}}
+function persist(){try{const value=JSON.stringify(saved);localStorage.setItem(STORE_KEY,value);localStorage.setItem(LEGACY_STORE_KEY,value);return true}catch{return false}}
+function status(s){byId('status').textContent=s}
+function refreshPoses(selectValue){const sel=byId('poseSelect');const keep=selectValue!==undefined?selectValue:sel.value;sel.replaceChildren();const neutral=document.createElement('option');neutral.value='';neutral.textContent='Neutral flat (default)';sel.append(neutral);Object.keys(saved).sort((a,b)=>a.localeCompare(b)).forEach(name=>{const op=document.createElement('option');op.value=name;op.textContent=name;sel.append(op)});sel.value=Object.hasOwn(saved,keep)?keep:'';refreshAnimationPoses()}
+function refreshAnimationPoses(){const from=byId('animFrom'),to=byId('animTo');if(!from||!to)return;const prevFrom=from.value,prevTo=to.value;from.replaceChildren();to.replaceChildren();const add=(sel,value,label)=>{const op=document.createElement('option');op.value=value;op.textContent=label;sel.append(op)};add(from,'current','Current pose');add(from,'neutral','Neutral flat (default)');add(to,'neutral','Neutral flat (default)');for(const name of Object.keys(saved).sort((a,b)=>a.localeCompare(b))){add(from,`pose:${name}`,name);add(to,`pose:${name}`,name)}from.value=[...from.options].some(o=>o.value===prevFrom)?prevFrom:'current';to.value=[...to.options].some(o=>o.value===prevTo)?prevTo:'neutral'}
+function resolveAnimationPose(id){const value=byId(id).value;if(value==='current')return clean(state);if(value==='neutral')return def();const name=value.startsWith('pose:')?value.slice(5):'';const pose=clean(saved[name]||def());if(saved[name]&&!Object.hasOwn(saved[name],'mode'))pose.mode=state.mode;return pose}
+function interpolatePose(from,to,t){const a=clean(from),b=clean(to);if(t<=0)return a;if(t>=1)return b;const p=def();p.mode=t<.5?a.mode:b.mode;p.expert=a.expert||b.expert;p.o=t<.5?a.o:b.o;p.wscale=t<.5?a.wscale:b.wscale;p.boxes=t<.5?a.boxes:b.boxes;p.wrist=norm(a.wrist+norm(b.wrist-a.wrist)*t);p.splay=a.splay+(b.splay-a.splay)*t;p.thumb=a.thumb+(b.thumb-a.thumb)*t;p.tilt=a.tilt+(b.tilt-a.tilt)*t;for(const d of ['index','ring','pinky'])p.fs[d]=a.fs[d]+(b.fs[d]-a.fs[d])*t;for(const d of D){p.rot[d]=a.rot[d]+(b.rot[d]-a.rot[d])*t;for(let j=0;j<3;j++)p.cj[d][j]=a.cj[d][j]+(b.cj[d][j]-a.cj[d][j])*t}return clean(p)}
+function markupForPose(pose){const previous=state;state=clean(pose);try{return handMarkup()}finally{state=previous}}
+function makeMeasurer(){const measureSvg=document.createElementNS('http://www.w3.org/2000/svg','svg');measureSvg.setAttribute('width','1000');measureSvg.setAttribute('height','1000');measureSvg.style.cssText='position:fixed;left:-12000px;top:0;width:1000px;height:1000px;visibility:hidden;pointer-events:none;overflow:visible';const group=document.createElementNS('http://www.w3.org/2000/svg','g');measureSvg.append(group);document.body.append(measureSvg);return{measure(markup){group.innerHTML=markup;group.querySelectorAll('.hit,.joint-hit').forEach(node=>node.remove());const b=group.getBBox();return{x:b.x,y:b.y,width:b.width,height:b.height}},destroy(){measureSvg.remove()}}}
+function squareViewBox(b){const max=Math.max(b.width,b.height,1),pad=Math.max(.55,max*.075),size=max+2*pad,cx=b.x+b.width/2,cy=b.y+b.height/2;return`${cx-size/2} ${cy-size/2} ${size} ${size}`}
+async function buildSequence(from,to,count){const measurer=makeMeasurer(),frames=[];let bounds=null;try{for(let i=0;i<count;i++){const t=count===1?1:i/(count-1),pose=interpolatePose(from,to,t),markup=markupForPose(pose),b=measurer.measure(markup);if(!bounds)bounds={...b};else{const x=Math.min(bounds.x,b.x),y=Math.min(bounds.y,b.y),right=Math.max(bounds.x+bounds.width,b.x+b.width),bottom=Math.max(bounds.y+bounds.height,b.y+b.height);bounds={x,y,width:right-x,height:bottom-y}}frames.push({pose,markup});if(i%4===0){status(`Framing animation… ${i+1}/${count}`);await new Promise(resolve=>setTimeout(resolve,0))}}}finally{measurer.destroy()}return{frames,viewBox:squareViewBox(bounds||{x:-1,y:-1,width:2,height:2})}}
+function svgDocument(markup,viewBox,size){const css=document.querySelector('style').textContent;return`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${viewBox}"><style>${css}</style>${markup}</svg>`}
+async function canvasFromMarkup(markup,viewBox,size,opaque=false){const blob=new Blob([svgDocument(markup,viewBox,size)],{type:'image/svg+xml;charset=utf-8'}),url=URL.createObjectURL(blob);try{const image=new Image();await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(Error('The browser could not render an export frame.'));image.src=url});const canvas=document.createElement('canvas');canvas.width=size;canvas.height=size;const ctx=canvas.getContext('2d',{willReadFrequently:opaque});if(opaque){ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()||'#fff';ctx.fillRect(0,0,size,size)}ctx.drawImage(image,0,0,size,size);return canvas}finally{URL.revokeObjectURL(url)}}
+function canvasBlob(canvas,type='image/png'){return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(Error('The browser could not create the image file.')),type))}
+function downloadBlob(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.style.display='none';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500)}
+function fileStem(id='imageFileName'){return(byId(id)?.value||'pyxl-hand-pose').trim().replace(/[^a-z0-9_-]+/gi,'-').replace(/^-+|-+$/g,'').slice(0,64)||'pyxl-hand-pose'}
+function singlePoseExport(){const markup=markupForPose(clean(state)),measurer=makeMeasurer();try{const b=measurer.measure(markup);return{markup,viewBox:squareViewBox(b)}}finally{measurer.destroy()}}
+async function savePosePng(){if(exportBusy)return;exportBusy=true;try{status('Rendering transparent PNG…');const image=singlePoseExport(),canvas=await canvasFromMarkup(image.markup,image.viewBox,1024);downloadBlob(await canvasBlob(canvas),`${fileStem()}.png`);status('Transparent PNG saved.')}catch(e){status(`PNG export failed: ${e.message||'unknown error'}`)}finally{exportBusy=false}}
+function savePoseSvg(){try{const image=singlePoseExport(),blob=new Blob([svgDocument(image.markup,image.viewBox,1024)],{type:'image/svg+xml;charset=utf-8'});downloadBlob(blob,`${fileStem()}.svg`);status('Vector SVG saved.')}catch(e){status(`SVG export failed: ${e.message||'unknown error'}`)}}
+function animationSettings(){const duration=clamp(byId('animDuration').value,.25,6),fps=round(clamp(byId('animFps').value,4,20));byId('animDuration').value=duration;byId('animFps').value=fps;return{duration,fps,count:Math.max(2,Math.min(120,Math.round(duration*fps)))}}
+async function selectedSequence(){const from=resolveAnimationPose('animFrom'),to=resolveAnimationPose('animTo'),settings=animationSettings();return{...await buildSequence(from,to,settings.count),from,to,...settings}}
+async function previewAnimation(){if(previewRaf){cancelAnimationFrame(previewRaf);previewRaf=0;frozenViewBox=null;sync();draw();status('Animation preview stopped.');return}if(exportBusy||previewBuilding)return;previewBuilding=true;try{const sequence=await selectedSequence();previewBuilding=false;frozenViewBox=sequence.viewBox;viewBoxNow=frozenViewBox;svg.setAttribute('viewBox',frozenViewBox);gridDirty=true;draw();const start=performance.now(),durationMs=sequence.duration*1000;const tick=now=>{const t=clamp((now-start)/durationMs,0,1);state=interpolatePose(sequence.from,sequence.to,t);sync();draw();if(t<1)previewRaf=requestAnimationFrame(tick);else{previewRaf=0;frozenViewBox=null;state=clean(sequence.to);sync();draw();status('Animation preview complete.')}};previewRaf=requestAnimationFrame(tick)}catch(e){previewBuilding=false;frozenViewBox=null;status(`Animation preview failed: ${e.message||'unknown error'}`)}}
+function loadPose(name){const keep={expert:state.expert,o:state.o,wscale:state.wscale,boxes:state.boxes,mode:state.mode};state=def();Object.assign(state,keep);if(name&&saved[name]){const p=clean(saved[name]);state=p;Object.assign(state,{expert:keep.expert,o:keep.o,wscale:keep.wscale,boxes:keep.boxes,mode:Object.hasOwn(saved[name],'mode')?p.mode:keep.mode})}clampers();sync();syncModeToolbar();draw();status(name?`Loaded “${name}”.`:'Neutral flat pose loaded.')}
+function savePose(){const name=byId('poseName').value.trim().slice(0,48);if(!name){status('Give this pose a name before saving.');byId('poseName').focus();return}saved[name]=copy(state);if(!persist()){status('Could not save in this browser. Check local storage settings.');return}refreshPoses(name);status(`Saved “${name}” in this browser.`)}
+function deletePose(){const name=byId('poseSelect').value;if(!name){status('Choose a saved pose to delete.');return}delete saved[name];persist();refreshPoses('');byId('poseName').value='';loadPose('');status(`Deleted “${name}” from this browser.`)}
+function exportPoses(){byId('poseData').value=JSON.stringify(saved,null,2);status('Pose JSON is ready to copy.')}
+function importPoses(){try{const parsed=JSON.parse(byId('poseData').value);if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw Error('Expected a JSON object of pose names and poses.');const next={};for(const [key,value] of Object.entries(parsed)){const name=String(key).trim().slice(0,48);if(name)next[name]=clean(value)}saved={...saved,...next};if(!persist())throw Error('Browser storage is unavailable.');refreshPoses('');status(`Imported ${Object.keys(next).length} pose${Object.keys(next).length===1?'':'s'}.`)}catch(e){status(`Import failed: ${e.message||'invalid JSON'}`)}}
+const CRC_TABLE=(()=>{const table=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;table[n]=c>>>0}return table})();
+function crc32(bytes){let crc=0xffffffff;for(const b of bytes)crc=CRC_TABLE[(crc^b)&255]^(crc>>>8);return(crc^0xffffffff)>>>0}
+function concatBytes(parts){const length=parts.reduce((n,p)=>n+p.length,0),out=new Uint8Array(length);let offset=0;for(const part of parts){out.set(part,offset);offset+=part.length}return out}
+function pngChunk(type,data){const name=new TextEncoder().encode(type),body=concatBytes([name,data]),out=new Uint8Array(body.length+8),dv=new DataView(out.buffer);dv.setUint32(0,data.length,false);out.set(body,4);dv.setUint32(body.length+4,crc32(body),false);return out}
+async function compressPngPixels(rgba,w,h){if(!('CompressionStream'in window))throw Error('This browser does not support APNG compression; use a current iPadOS/Safari or Chromium release.');const rowBytes=w*4,raw=new Uint8Array((rowBytes+1)*h);for(let y=0;y<h;y++)raw.set(rgba.subarray(y*rowBytes,(y+1)*rowBytes),y*(rowBytes+1)+1);const stream=new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate'));return new Uint8Array(await new Response(stream).arrayBuffer())}
+function pngHeader(w,h){const sig=Uint8Array.from([137,80,78,71,13,10,26,10]),ihdr=new Uint8Array(13),dv=new DataView(ihdr.buffer);dv.setUint32(0,w,false);dv.setUint32(4,h,false);ihdr[8]=8;ihdr[9]=6;return[sig,pngChunk('IHDR',ihdr)]}
+function encodeApng(compressedFrames,w,h,fps){const parts=pngHeader(w,h),actl=new Uint8Array(8),ad=new DataView(actl.buffer);ad.setUint32(0,compressedFrames.length,false);ad.setUint32(4,0,false);parts.push(pngChunk('acTL',actl));let seq=0;for(let i=0;i<compressedFrames.length;i++){const fctl=new Uint8Array(26),dv=new DataView(fctl.buffer);dv.setUint32(0,seq++,false);dv.setUint32(4,w,false);dv.setUint32(8,h,false);dv.setUint32(12,0,false);dv.setUint32(16,0,false);dv.setUint16(20,1,false);dv.setUint16(22,fps,false);fctl[24]=0;fctl[25]=0;parts.push(pngChunk('fcTL',fctl));if(i===0)parts.push(pngChunk('IDAT',compressedFrames[i]));else{const data=new Uint8Array(compressedFrames[i].length+4);new DataView(data.buffer).setUint32(0,seq++,false);data.set(compressedFrames[i],4);parts.push(pngChunk('fdAT',data))}}parts.push(pngChunk('IEND',new Uint8Array()));return new Blob(parts,{type:'image/apng'})}
+function gifPalette(){const table=new Uint8Array(768),c=document.createElement('canvas').getContext('2d');c.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()||'#fff';c.fillRect(0,0,1,1);table.set(c.getImageData(0,0,1,1).data.subarray(0,3),0);for(let i=1;i<256;i++){const q=i-1;table[i*3]=Math.round(((q>>5)&7)*255/7);table[i*3+1]=Math.round(((q>>2)&7)*255/7);table[i*3+2]=Math.round((q&3)*255/3)}return table}
+function gifIndices(rgba){const out=new Uint8Array(rgba.length/4);for(let s=0,d=0;s<rgba.length;s+=4,d++){const q=(rgba[s]>>5)*32+(rgba[s+1]>>5)*4+(rgba[s+2]>>6);out[d]=q===255?255:q+1}return out}
+function gifLzw(data){const clear=256,end=257,dict=new Map(),out=[];let next=258,bits=9,acc=0,bitCount=0;const write=(code,size)=>{acc|=code<<bitCount;bitCount+=size;while(bitCount>=8){out.push(acc&255);acc>>>=8;bitCount-=8}};write(clear,bits);if(data.length){let prefix=data[0];for(let i=1;i<data.length;i++){const value=data[i],key=(prefix<<8)|value,found=dict.get(key);if(found!==undefined)prefix=found;else{write(prefix,bits);if(next<4096){dict.set(key,next++);if(next===(1<<bits)&&bits<12)bits++}else{write(clear,bits);dict.clear();next=258;bits=9}prefix=value}}write(prefix,bits)}write(end,bits);if(bitCount)out.push(acc&255);return Uint8Array.from(out)}
+function le16(v){return[v&255,(v>>8)&255]}
+function gifFrame(indices,w,h,fps){const delay=Math.max(2,Math.round(100/fps)),compressed=gifLzw(indices),bytes=[0x21,0xf9,4,0,...le16(delay),0,0,0x2c,...le16(0),...le16(0),...le16(w),...le16(h),0,8];for(let i=0;i<compressed.length;i+=255){const block=compressed.subarray(i,i+255);bytes.push(block.length);for(const v of block)bytes.push(v)}bytes.push(0);return Uint8Array.from(bytes)}
+function gifHeader(w,h){const header=Uint8Array.from([71,73,70,56,57,97,...le16(w),...le16(h),0xf7,0,0]),loop=Uint8Array.from([0x21,0xff,0x0b,78,69,84,83,67,65,80,69,50,46,48,3,1,0,0,0]);return[header,gifPalette(),loop]}
+function zipStore(files){const local=[],central=[];let offset=0;for(const file of files){const name=new TextEncoder().encode(file.name),data=file.data,crc=crc32(data),lh=new Uint8Array(30),ld=new DataView(lh.buffer);ld.setUint32(0,0x04034b50,true);ld.setUint16(4,20,true);ld.setUint16(6,0x0800,true);ld.setUint16(8,0,true);ld.setUint16(10,0,true);ld.setUint16(12,0x21,true);ld.setUint32(14,crc,true);ld.setUint32(18,data.length,true);ld.setUint32(22,data.length,true);ld.setUint16(26,name.length,true);ld.setUint16(28,0,true);local.push(lh,name,data);const ch=new Uint8Array(46),cd=new DataView(ch.buffer);cd.setUint32(0,0x02014b50,true);cd.setUint16(4,20,true);cd.setUint16(6,20,true);cd.setUint16(8,0x0800,true);cd.setUint16(10,0,true);cd.setUint16(12,0,true);cd.setUint16(14,0x21,true);cd.setUint32(16,crc,true);cd.setUint32(20,data.length,true);cd.setUint32(24,data.length,true);cd.setUint16(28,name.length,true);cd.setUint16(30,0,true);cd.setUint16(32,0,true);cd.setUint16(34,0,true);cd.setUint16(36,0,true);cd.setUint32(38,0,true);cd.setUint32(42,offset,true);central.push(ch,name);offset+=lh.length+name.length+data.length}const csize=central.reduce((n,p)=>n+p.length,0),end=new Uint8Array(22),ed=new DataView(end.buffer);ed.setUint32(0,0x06054b50,true);ed.setUint16(8,files.length,true);ed.setUint16(10,files.length,true);ed.setUint32(12,csize,true);ed.setUint32(16,offset,true);return new Blob([...local,...central,end],{type:'application/zip'})}
+async function exportAnimation(format){if(exportBusy||previewBuilding||previewRaf)return;exportBusy=true;try{if(format==='apng'&&typeof CompressionStream==='undefined')throw Error('APNG export needs a current iPadOS/Safari or Chromium browser with CompressionStream support.');const sequence=await selectedSequence(),size=512,parts=[];status(`Rendering ${sequence.frames.length} ${format.toUpperCase()} frames…`);for(let i=0;i<sequence.frames.length;i++){const canvas=await canvasFromMarkup(sequence.frames[i].markup,sequence.viewBox,size,format==='gif');if(format==='gif')parts.push(gifFrame(gifIndices(canvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,size,size).data),size,size,sequence.fps));else if(format==='apng')parts.push(await compressPngPixels(canvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,size,size).data,size,size));else{const blob=await canvasBlob(canvas),data=new Uint8Array(await blob.arrayBuffer());parts.push(data)}if(i%3===0){status(`Rendering ${format.toUpperCase()} frame ${i+1}/${sequence.frames.length}…`);await new Promise(resolve=>setTimeout(resolve,0))}}let blob,extension;if(format==='gif'){blob=new Blob([...gifHeader(size,size),...parts,Uint8Array.from([0x3b])],{type:'image/gif'});extension='gif'}else if(format==='apng'){blob=encodeApng(parts,size,size,sequence.fps);extension='apng'}else{const files=parts.map((data,i)=>({name:`frames/frame-${String(i+1).padStart(3,'0')}.png`,data}));files.push({name:'animation.json',data:new TextEncoder().encode(JSON.stringify({from:byId('animFrom').selectedOptions[0].textContent,to:byId('animTo').selectedOptions[0].textContent,durationSeconds:sequence.duration,framesPerSecond:sequence.fps,frameCount:sequence.frames.length,width:size,height:size,viewBox:sequence.viewBox,anchor:'Wrist and joint pivots are preserved; every frame shares one square viewBox.'},null,2))});blob=zipStore(files);extension='zip'}downloadBlob(blob,`${fileStem('animFileName')}.${extension}`);status(`${format.toUpperCase()} animation saved.`)}catch(e){status(`${format.toUpperCase()} export failed: ${e.message||'unknown error'}`)}finally{exportBusy=false}}
+function saveAnimationGif(){return exportAnimation('gif')}
+function saveAnimationApng(){return exportAnimation('apng')}
+function saveAnimationZip(){return exportAnimation('zip')}
+function slider(card,label,get,set,range){
+  const row=document.createElement('div');row.className='slider-row';const lab=document.createElement('label');lab.textContent=label;const r=document.createElement('input');r.type='range';r.setAttribute('aria-label',label);const n=document.createElement('input');n.type='number';n.setAttribute('aria-label',label+' value');row.append(lab,r,n);card.append(row);
+  const apply=el=>{const [lo,hi]=range();const val=round(clamp(el.value,lo,hi));set(val);clampers();sync();draw()};r.addEventListener('input',()=>apply(r));n.addEventListener('input',()=>apply(n));inputs.push({r,n,get,range});return row;
+}
+function checkbox(card,label,get,set){const row=document.createElement('label');row.className='check-row';const input=document.createElement('input');input.type='checkbox';input.addEventListener('change',()=>{set(input.checked);clampers();sync();draw()});row.append(input,document.createTextNode(label));card.append(row);checks.push({input,get});return input}
+function card(title,subtitle){const c=document.createElement('section');c.className='card';const h=document.createElement('h2');h.textContent=title;c.append(h);if(subtitle){const p=document.createElement('p');p.className='sub';p.textContent=subtitle;c.append(p)}controlGrid.append(c);return c}
+function button(parent,label,fn,cls=''){const b=document.createElement('button');b.type='button';b.textContent=label;if(cls)b.className=cls;b.addEventListener('click',fn);parent.append(b);return b}
+function addSelectRow(parent,label,id){const row=document.createElement('div');row.className='row';const lab=document.createElement('label');lab.textContent=label;lab.htmlFor=id;const sel=document.createElement('select');sel.id=id;row.append(lab,sel);parent.append(row);return sel}
+function modeIcon(mode){const digits=MODES[mode].digits,n=digits.length;let paths='';digits.forEach((_,i)=>{const x=n===1?10.5:3.5+i*(17/(n-1));const h=7+(i%2)*2;paths+=`<path d="M${x} 16V${16-h}q0-2 1.8-2t1.8 2v2"/>`});return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17h16v2.2A2.8 2.8 0 0 1 17.2 22H6.8A2.8 2.8 0 0 1 4 19.2z"/>${paths}</svg>`}
+function toolbarButton(label,icon,action,mode){const b=document.createElement('button');b.type='button';b.className='tool-icon';b.setAttribute('aria-label',label);b.title=label;b.innerHTML=icon;if(mode)b.dataset.mode=mode;b.addEventListener('click',action);byId('modeToolbar').append(b);return b}
+function syncModeToolbar(){document.querySelectorAll('.tool-icon[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===state.mode)))}
+function buildModeToolbar(){const bar=byId('modeToolbar');bar.replaceChildren();for(const mode of Object.keys(MODES))toolbarButton(MODES[mode].label,modeIcon(mode),()=>{state.mode=mode;syncModeToolbar();draw();status(`${MODES[mode].label} layout selected.`)},mode);const sep=document.createElement('div');sep.className='tool-sep';sep.setAttribute('aria-hidden','true');bar.append(sep);toolbarButton('Reset pose','<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10a8 8 0 1 1 2 7"/><path d="M4 4v6h6"/></svg>',resetRig);toolbarButton('Save pose (+)','<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h12l3 3v15H4V3z"/><path d="M8 3v6h8V3M8 21v-8h8v8M12 15v4M10 17h4"/></svg>',savePoseFromToolbar);toolbarButton('Delete selected pose (−)','<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>',deletePose)}
+function resetRig(){state=def();sync();syncModeToolbar();draw();refreshPoses('');byId('poseName').value='';status('Reset to defaults.')}
+function savePoseFromToolbar(){const name=byId('poseName').value.trim();if(!name||Object.hasOwn(saved,name)){let i=1;while(Object.hasOwn(saved,`Pose ${i}`))i++;byId('poseName').value=`Pose ${i}`}savePose()}
+function makeControls(){
+  buildModeToolbar();
+  const poses=card('Poses','Saved poses stay in this browser until exported.');
+  let row=document.createElement('div');row.className='row';const poseLab=document.createElement('label');poseLab.textContent='Pose';poseLab.htmlFor='poseSelect';const select=document.createElement('select');select.id='poseSelect';row.append(poseLab,select);poses.append(row);
+  row=document.createElement('div');row.className='row';const name=document.createElement('input');name.id='poseName';name.type='text';name.maxLength=48;name.placeholder='Pose name';name.setAttribute('aria-label','Pose name');row.append(name);poses.append(row);
+  let br=document.createElement('div');br.className='button-row';button(br,'Save current pose',savePose,'primary');button(br,'Delete selected',deletePose,'danger');poses.append(br);
+  br=document.createElement('div');br.className='button-row';button(br,'Export JSON',exportPoses);button(br,'Import JSON',importPoses);poses.append(br);
+  const ta=document.createElement('textarea');ta.id='poseData';ta.spellcheck=false;ta.setAttribute('aria-label','Pose JSON for export or import');ta.placeholder='Exported pose JSON appears here. Paste a JSON object here to import.';poses.append(ta);
+  const message=document.createElement('p');message.id='status';message.className='hint';message.setAttribute('role','status');message.setAttribute('aria-live','polite');message.textContent='Ready.';poses.append(message);
+  const options=card('Hand','Global pose and rig options.');
+  slider(options,'Wrist',()=>state.wrist,v=>state.wrist=v,()=>[-180,180]);slider(options,'Splay',()=>state.splay,v=>state.splay=v,()=>[-100,100]);slider(options,'Bird tilt',()=>state.tilt,v=>state.tilt=v,()=>[-30,30]);
+  checkbox(options,'Expert limits',()=>state.expert,v=>state.expert=v);checkbox(options,'Knuckle overlap',()=>state.o>.0,v=>state.o=v?.5:0);checkbox(options,'Scale widths',()=>state.wscale,v=>state.wscale=v);checkbox(options,'Show palm boxes',()=>state.boxes,v=>state.boxes=v);
+  br=document.createElement('div');br.className='button-row';button(br,'Reset',resetRig);button(br,'Mirror left / right',()=>{state.wrist=-state.wrist;state.splay=-state.splay;state.thumb=-state.thumb;state.tilt=-state.tilt;for(const d of ['index','ring','pinky'])state.fs[d]=-state.fs[d];for(const d of D)state.rot[d]=-state.rot[d];sync();draw();status('Mirrored wrist, splay, tilt, and rotations.')});options.append(br);
+  const chi=()=>state.expert?[ -90,90]:[-20,90];
+  for(const d of CONTROL_ORDER){const c=card(d==='middle'?'Bird (middle)':d[0].toUpperCase()+d.slice(1),d==='middle'?'Master fingerpiece; defines the default bone scale.':'Individual fingerpiece controls.');
+    if(d!=='middle'){const path=d==='thumb'?'thumb':null;slider(c,d==='thumb'?'Thumb splay':'Splay adjustment',()=>d==='thumb'?state.thumb:state.fs[d],v=>{if(path)state.thumb=v;else state.fs[d]=v},()=>[-100,100])}
+    slider(c,'Rotation',()=>state.rot[d],v=>state.rot[d]=v,()=>rRange(d));
+    const used=Array.from({length:countJ(d)},(_,j)=>state.cj[d][curlIndex(d,j)]);
+    slider(c,'Curl (average)',()=>{const arr=Array.from({length:countJ(d)},(_,j)=>state.cj[d][curlIndex(d,j)]);return arr.reduce((a,b)=>a+b,0)/arr.length},v=>{for(let j=0;j<countJ(d);j++)state.cj[d][curlIndex(d,j)]=v},()=>cRange(d));
+    const det=document.createElement('details');const sum=document.createElement('summary');sum.textContent='Joint curls';det.append(sum);const inside=document.createElement('div');inside.className='details-inner';const labels=d==='thumb'?['Knuckle','Tip joint']:['Knuckle','Middle joint','Tip joint'];for(let j=0;j<countJ(d);j++){const idx=curlIndex(d,j);slider(inside,labels[j],()=>state.cj[d][idx],v=>state.cj[d][idx]=v,()=>cRange(d))}det.append(inside);c.append(det);
+  }
+  const imageCard=card('Save pose image','Transparent exports are framed around the visible hand and its anchors.');
+  row=document.createElement('div');row.className='row';const fileLabel=document.createElement('label');fileLabel.textContent='File name';fileLabel.htmlFor='imageFileName';const imageName=document.createElement('input');imageName.id='imageFileName';imageName.type='text';imageName.value='pyxl-hand-pose';imageName.maxLength=64;row.append(fileLabel,imageName);imageCard.append(row);
+  br=document.createElement('div');br.className='button-row';button(br,'Save PNG',savePosePng,'primary');button(br,'Save SVG',savePoseSvg);imageCard.append(br);
+  const anim=card('Pose-to-pose animation','Choose two saved poses or use the current pose as the start.');
+  addSelectRow(anim,'From','animFrom');addSelectRow(anim,'To','animTo');
+  row=document.createElement('div');row.className='row';const animNameLabel=document.createElement('label');animNameLabel.textContent='File name';animNameLabel.htmlFor='animFileName';const animName=document.createElement('input');animName.id='animFileName';animName.type='text';animName.value='pyxl-animation';animName.maxLength=64;row.append(animNameLabel,animName);anim.append(row);
+  row=document.createElement('div');row.className='row';const durationLabel=document.createElement('label');durationLabel.textContent='Duration (sec)';durationLabel.htmlFor='animDuration';const duration=document.createElement('input');duration.id='animDuration';duration.type='number';duration.min='.25';duration.max='6';duration.step='.25';duration.value='2';duration.style.width='76px';row.append(durationLabel,duration);const fpsLabel=document.createElement('label');fpsLabel.textContent='FPS';fpsLabel.htmlFor='animFps';const fps=document.createElement('input');fps.id='animFps';fps.type='number';fps.min='4';fps.max='20';fps.step='1';fps.value='12';fps.style.width='65px';row.append(fpsLabel,fps);anim.append(row);
+  br=document.createElement('div');br.className='button-row';button(br,'Preview transition',previewAnimation,'primary');button(br,'Save GIF',saveAnimationGif);button(br,'Save APNG',saveAnimationApng);button(br,'Save ZIP frames',saveAnimationZip);anim.append(br);
+  const animHint=document.createElement('p');animHint.className='hint';animHint.textContent='GIF is palette-limited; APNG and ZIP PNG frames preserve full color and transparency. ZIP contains numbered PNG frames plus an animation manifest.';anim.append(animHint);
+  const help=card('How it works','Drag the rig or use the controls for exact poses.');
+  const helpText=document.createElement('p');helpText.className='hint';helpText.textContent='Wrist rotation spans a full 360°. Drag a finger to swing it around the wrist; drag a joint circle or bone shaft to pose it with inverse kinematics. The split bar resizes the canvas and controls. Hand splay moves every digit; per-finger splay is added to it and clamps symmetrically to ±100%. Normal limits are curl −20° to 90° (thumb 80°) and rotation ±45° (thumb ±60°); Expert expands curl and rotation to ±90°. The outline circles mark snap joints; faint seam buffers are tolerance guides, not snaps.';help.append(helpText);
+  byId('poseSelect').addEventListener('change',()=>loadPose(byId('poseSelect').value));
+  safeRead();refreshPoses('');sync();
+}
+function sync(){clampers();for(const x of inputs){const [lo,hi]=x.range();x.r.min=lo;x.r.max=hi;x.n.min=lo;x.n.max=hi;x.r.value=clamp(x.get(),lo,hi);x.n.value=round(clamp(x.get(),lo,hi))}for(const x of checks)x.input.checked=!!x.get();syncModeToolbar()}
+function bonePath(w,top,bot){const r=Math.min(w*.375,(bot-top)*.28),h=w/2;return `M ${-h} ${bot} L ${h} ${bot} L ${h} ${top+r} Q ${h} ${top} ${h-r} ${top} L ${-h+r} ${top} Q ${-h} ${top} ${-h} ${top+r} Z`}
+function rec(d,i){
+  const ls=BONES[d],len=ls[i],ov=jointOverlap(d),a=i===1?-ov/2:0,J=i===0?ov:0,top=-(a+len),bot=-a,w=width(d),boneW=w*.75;let out=`<g class="piece"><rect class="buff" x="${-w/2-.25}" y="${top-.25}" width="${w+.5}" height="${len+.5}" rx=".08"/>`;
+  if(i===ls.length-1)out+=`<path class="bone" d="${bonePath(boneW,top,bot)}"/>`;else out+=`<rect class="bone" x="${-boneW/2}" y="${top}" width="${boneW}" height="${len}" rx="${Math.min(boneW*.18,.16)}"/>`;
+  const k=Math.min(i+1,ls.length-2);out+=`<rect class="hit" x="${-w/2-.25}" y="${top-.25}" width="${w+.5}" height="${len+.5}" data-d="${d}" data-j="${k}" aria-label="Drag ${d} bone"/>`;
+  if(i<ls.length-1){const jr=i===0?KN[d]/2:(d==='thumb'?.125:.25),cy=top+J/2;out+=`<g transform="translate(0 ${cy}) rotate(${-(state.cj[d][curlIndex(d,i)]||0)})">${rec(d,i+1)}</g><circle class="sock" cx="0" cy="${cy}" r="${jr}"/><circle class="plug" cx="0" cy="${cy}" r="${Math.max(.04,jr*.16)}"/><circle class="joint-hit" cx="0" cy="${cy}" r="${Math.max(jr,.3)}" data-d="${d}" data-j="${i}" aria-label="Drag ${d} joint"/>`}
+  out+='</g>';return out;
+}
+function handMarkup(){let s='<g transform="translate(0 '+WRIST_Y+') rotate('+state.wrist+')">';
+  if(state.boxes){s+='<g class="box"><rect x="-2" y="-4" width="4" height="4"/><path class="box-grid" d="M-1 -4V0 M0 -4V0 M1 -4V0"/></g>'}
+  for(const d of DRAW_ORDER)if(MODES[state.mode].digits.includes(d))s+=`<g class="digit" data-d="${d}" transform="rotate(${A(d)})">${rec(d,0)}</g>`;
+  s+='<circle class="wrist-ring" cx="0" cy="0" r=".5"/><circle class="wrist-dot" cx="0" cy="0" r=".08"/><circle class="hit" cx="0" cy="0" r=".8" data-w="1" aria-label="Drag wrist"/></g>';return s}
+function gridMarkup(vb){const [x,y,w,h]=vb.split(' ').map(Number);let out='<g id="grid">';for(const f of [1/3,2/3]){const gx=x+w*f,gy=y+h*f;out+=`<line class="gt" x1="${gx}" y1="${y}" x2="${gx}" y2="${y+h}"/><line class="gt" x1="${x}" y1="${gy}" x2="${x+w}" y2="${gy}"/>`}for(const f of [.25,.5,.75]){const gx=x+w*f,gy=y+h*f;out+=`<line class="gq" x1="${gx}" y1="${y}" x2="${gx}" y2="${y+h}"/><line class="gq" x1="${x}" y1="${gy}" x2="${x+w}" y2="${gy}"/>`}return out+'</g>'}
+function calcViewbox(bb){const aspect=Math.max(.1,stage.clientWidth/Math.max(1,stage.clientHeight));if(!W)W=Math.max(bb.width,bb.height)/.75;let vw,vh;if(aspect>=1){vh=W;vw=W*aspect}else{vw=W;vh=W/aspect}const cx=bb.x+bb.width/2,cy=bb.y+bb.height/2;return `${cx-vw/2} ${cy-vh/2} ${vw} ${vh}`}
+function draw(){
+  if(!initialized){svg.innerHTML='<g id="grid"></g><g id="hand"></g>';initialized=true;gridDirty=true}
+  const hand=byId('hand');hand.innerHTML=handMarkup();
+  if(frozenViewBox){if(viewBoxNow!==frozenViewBox){svg.setAttribute('viewBox',frozenViewBox);viewBoxNow=frozenViewBox;gridDirty=true}}else if(!drag){try{const bb=hand.getBBox();if(bb.width>0&&bb.height>0){const next=calcViewbox(bb);if(next!==viewBoxNow){svg.setAttribute('viewBox',next);viewBoxNow=next;gridDirty=true}}}catch{}}
+  if(gridDirty){const vb=svg.getAttribute('viewBox')||'-6 -1 12 10';byId('grid').innerHTML=gridMarkup(vb);gridDirty=false}
+  const fmt=n=>Number(n.toFixed(2)).toString();byId('rd').textContent=`Functional reach (pyxls): Bird ${fmt(reach('middle'))}, ring ${fmt(reach('ring'))}, index ${fmt(reach('index'))}, pinky ${fmt(reach('pinky'))}, thumb ${fmt(reach('thumb'))}.`;
+}
+function jPos(d){const ls=BONES[d],over=jointOverlap(d);let x=0,y=WRIST_Y,phi=state.wrist+A(d);const pts=[];for(let i=0;i<ls.length-1;i++){const a=i===1?-over/2:0,J=i===0?over:0,dist=a+ls[i]-J/2;x+=dist*Math.sin(phi*R);y-=dist*Math.cos(phi*R);pts.push([x,y,phi]);phi-=state.cj[d][curlIndex(d,i)]||0}return pts}
+function angleFromUp(dx,dy){return Math.atan2(dx,-dy)/R}
+function ik(d,k,tx,ty){const last=countJ(d)-1;k=clamp(k,0,last);for(let it=0;it<14;it++){let pts=jPos(d),target=pts[k];if(!target)break;for(let j=k-1;j>=-1;j--){pts=jPos(d);target=pts[k];const pivot=j<0?[0,WRIST_Y]:(j===0?[0,WRIST_Y]:pts[j-1]);const cur=target;const a0=angleFromUp(cur[0]-pivot[0],cur[1]-pivot[1]),a1=angleFromUp(tx-pivot[0],ty-pivot[1]),dl=norm(a1-a0);if(j>=0){const ci=curlIndex(d,j);state.cj[d][ci]=clamp(state.cj[d][ci]-dl,...cRange(d))}else state.rot[d]=clamp(state.rot[d]+dl,...rRange(d));}}
+  for(let j=0;j<3;j++)state.cj[d][j]=round(state.cj[d][j]);state.rot[d]=round(state.rot[d]);clampers();
+}
+function toCanvas(clientX,clientY){const p=svg.createSVGPoint();p.x=clientX;p.y=clientY;const q=p.matrixTransform(cachedCTM);return[q.x,q.y]}
+function onPointerDown(e){if(frozenViewBox||previewBuilding||e.button!==undefined&&e.button!==0)return;const target=e.target.closest?.('[data-w],[data-j],[data-d]');if(!target)return;const inverse=svg.getScreenCTM();if(!inverse)return;cachedCTM=inverse.inverse();const wristHit=target.closest('[data-w]'),jointHit=target.closest('[data-j]'),fingerHit=target.closest('[data-d]');if(wristHit)drag={type:'wrist'};else if(jointHit)drag={type:'ik',d:jointHit.dataset.d,k:Number(jointHit.dataset.j)};else if(fingerHit)drag={type:'finger',d:fingerHit.dataset.d};else return;svg.classList.add('dragging');try{svg.setPointerCapture(e.pointerId)}catch{}pointerLatest={x:e.clientX,y:e.clientY};e.preventDefault()}
+function onPointerMove(e){if(!drag)return;pointerLatest={x:e.clientX,y:e.clientY};if(raf)return;raf=requestAnimationFrame(()=>{raf=0;if(!drag||!pointerLatest)return;const [x,y]=toCanvas(pointerLatest.x,pointerLatest.y);if(drag.type==='wrist'){state.wrist=round(clamp(norm(angleFromUp(x,y-WRIST_Y)),-180,180))}else if(drag.type==='finger'){const base=state.wrist+A(drag.d)-state.rot[drag.d];const target=angleFromUp(x,y-WRIST_Y);state.rot[drag.d]=round(clamp(norm(target-base),...rRange(drag.d)))}else ik(drag.d,drag.k,x,y);sync();draw()})}
+function stopDrag(e){if(!drag)return;drag=null;cachedCTM=null;pointerLatest=null;if(raf){cancelAnimationFrame(raf);raf=0}svg.classList.remove('dragging');try{if(e?.pointerId!==undefined&&svg.hasPointerCapture(e.pointerId))svg.releasePointerCapture(e.pointerId)}catch{}draw()}
+svg.addEventListener('pointerdown',onPointerDown);svg.addEventListener('pointermove',onPointerMove);svg.addEventListener('pointerup',stopDrag);svg.addEventListener('pointercancel',stopDrag);svg.addEventListener('lostpointercapture',stopDrag);
+function setStageHeight(px){const usable=Math.max(1,app.clientHeight-24);const min=Math.min(usable*.2,Math.max(1,app.clientHeight-144));const max=Math.max(min,Math.min(usable*.85,app.clientHeight-144));const height=clamp(px,min,max),ratio=height/Math.max(1,usable-height);app.style.gridTemplateRows=`minmax(20%,${ratio}fr) 24px minmax(120px,1fr)`;gridDirty=true;draw()}
+let splitDrag=false;split.addEventListener('pointerdown',e=>{splitDrag=true;try{split.setPointerCapture(e.pointerId)}catch{}e.preventDefault()});split.addEventListener('pointermove',e=>{if(splitDrag)setStageHeight(e.clientY-app.getBoundingClientRect().top)});const splitEnd=e=>{splitDrag=false;try{if(e?.pointerId!==undefined&&split.hasPointerCapture(e.pointerId))split.releasePointerCapture(e.pointerId)}catch{}};split.addEventListener('pointerup',splitEnd);split.addEventListener('pointercancel',splitEnd);split.addEventListener('dblclick',()=>setStageHeight((app.clientHeight-24)*2/3));split.addEventListener('keydown',e=>{if(e.key==='ArrowUp'){setStageHeight(stage.clientHeight-20);e.preventDefault()}if(e.key==='ArrowDown'){setStageHeight(stage.clientHeight+20);e.preventDefault()}});
+const ro=new ResizeObserver(()=>{gridDirty=true;draw()});ro.observe(stage);
+makeControls();draw();
+})();
+</script>
+</body>
+</html>
+
+Ran 5 commands, edited 1 file +62 -15, and read 1 file
+
+Edited hand-rig.2026-10-22.final.html
+
+I'm working on creating an SVG representation of a "finger count" icon that visually shows finger positions. I'm thinking of using a loop to draw paths for each finger's position, ensuring they are well spaced. The height might be around 10 units, and I'll need to construct the palm base as well. Plus, I've got to adjust the paths to accommodate overlapping digits based on the number of fingers being depicted. I want to make it simple yet effective!
+
+
+Edited hand-rig.2026-10-22.final.html
+
+I need to make sure the app grid overrides the existing #app styling and keeps the 2fr 16px order in CSS. Then, for the JS stage ratio, I'll set the max and min to use appHeight - 136. So, I need to adjust the minimum controls to ensure it’s min120 plus a split of 24. I'll calculate max as appHeight - 144, and use usable equal to app.clientHeight - 24. I'll also address the split pointer and ensure the digits display correctly with a dynamic Bbox patch.
+
+
+Edited hand-rig.2026-10-22.final.html
+
+Edited hand-rig.2026-10-22.final.html
+
+Edited hand-rig.2026-10-22.final.html
+
+I'm thinking about shifting precedence and how equality has lower precedence than shift. It seems important to include parentheses for clarity. I'm considering the case where next equals 4096 and thinking through the implications — like how this might output code width of 12 and dictionary size of 4096. After I emit the prefix, it's good to note that codeSize remains 12, so overall, I want to ensure I'm writing a clear 12-bit output.
+
+
+I'm thinking that it’s time to focus on improving those large helper functions. It seems beneficial to patch them now to streamline things. I wonder how this might improve efficiency or simplify my code. I’ll assess which functions need the most attention and consider ways to simplify them. By doing this, I hope to enhance overall performance and maintenance. Let’s get started on identifying those functions for patching!
+
+
+It looks like the patch failed due to a possible mismatch with the context anchor function slider. I might need to inspect the lines around 80 to 150 to understand what went wrong. I wonder if adjusting those lines could help fix the issue. I'll take a closer look to see if I can identify the problem and make the necessary adjustments. Let’s get to work on this!
+
+Opened hand-rig.2026-10-22.final.html
+
+I’m thinking about using a smaller chunk with the @@ function loadPose(name) header and the old function line content. It feels like I should apply the patch grammar right there. The context directive is not the actual line, so I wonder how to best jump between them. I think adding lines before the next segment could help. Using the current function line for clarity sounds good, too. Overall, I want to ensure it’s easier to follow!
+
+
+Edited hand-rig.2026-10-22.final.html
+
+Edited hand-rig.2026-10-22.final.html
+
+I'm noticing that I need to address the missing animation filename UI. I'll need to build a function call to create the necessary controls for the image card. It seems logical to add a row after the selectors, maybe even before the duration section. So, I’m thinking I should inspect the portion around the makeControls lines 150 and see what's going on there. It seems like there’s a bit to figure out!
+
+Opened hand-rig.2026-10-22.final.html
+
+I’m looking at inserting code after the preview, but I noticed there's no last line. I need to make some notes in the makeControls file after line 180. The previous insertion block with common encoding functions seems to apply after the function slider, focusing on lines 78 to 150. Wait, I should double-check lines 150, and also look at syncing with CRC functions around lines 125. Time to read through lines 124-150.
+
+
+Edited hand-rig.2026-10-22.final.html
+
+Edited hand-rig.2026-10-22.final.html
+
+I need to update the Mode icons in the floating toolbar and check the browser. There's still an issue with the animation code because the exportAnimation function is missing, which is a problem after a recent failed patch. Also, it seems that the CRC code insertion worked before, but there was a previous core code patch adding savePosePng. I plan to insert exportAnimation after zipStore, so I’ll take a closer look around line 120 for the functions.
+
+Opened hand-rig.2026-10-22.final.html
+
+Ran an inline script with node
+
+I'm thinking about parsing files and checking GIFs with Chromium. I can load the image and use Image.decode() to verify the width and height. I can't guarantee that I can check every animation frame, but as long as the file is valid, that’s okay. I realize that a Chromium <img> might only decode the first frame, but that should still be sufficient for a quick check.
+
+
+I’m thinking about how the svgDocument CSS :root can be overwritten by the environment. It seems like an important detail to keep in mind. I want to make sure I’m fully understanding this aspect. Also, I need to test the image decoding. Okay, let's run that test and see what happens! I’m curious to see if everything works as expected.
+
+
+Deleted /tmp/pyxl-export-tests, /tmp/pyxl-cdp-profile4 and 7 other actions
+
+Ran file and 5 other actions
+
+I’ve identified an APNG file that is labeled as PNG, but there seems to be a bad header issue with an invalid type. I’m wondering if chunk order might be the problem. I need to examine the fcTL chunk CRC to build the pngChunk. The correct order for the headers appears to be PNG signature, IHDR, followed by acTL, fcTL, and IDAT. However, the bad header could stem from the APNG file header, so I’ll take a closer look with xxd.
+
+
+Ran od and 1 other action
+
+I'm looking into the APNG issue, and it seems it might be an off-by-four error due to the data length. The output shows a new chunk length of 0 0 0 0, and the chunk type appears as 00 00 00 08; maybe it starts four bytes earlier? At offset 33, I see 0 0 0 0, and then at offset 37, it shows 0 0 0 8, followed by the acTL which looks like it’s correctly formatted with length 8 and a frame count of 2.
+
+
+Edited hand-rig.2026-10-22.final.html
+
+Edited hand-rig.2026-10-22.final.html
+
+Edited hand-rig.2026-10-22.final.html
+
+I'm considering adding a text description at the top and a button titled "Trident" to make things clearer for the user. They expect selectable modes, so I should detail those, like defining "Claw — bird + thumb." Each mode label, like claw, should include descriptions and accessibility info, such as an aria-label for "Mickey's Glove." I also need to ensure that resetting the state preserves input time, and the export files should be tested for accuracy. Finally, I'll focus on visually centering the animations and computing bounding boxes properly.
+
+Ensuring frame completeness
+
+I’m thinking about the continuous movement between discrete samples and how it might slightly extend outside the union. To ensure that the GIF appears whole throughout the transition, I need to focus on how each discrete frame bounds all the rendered pixels. It's crucial that there's no cropping involved, as every sampled frame has to maintain its integrity. This way, I can guarantee a smooth and complete visual experience.
+
+
+I need to validate the current code in the browser, checking various functionalities like save/delete, reset, image outputs, animation previews, and all outputs. Firstly, I should run syntax checks to ensure nothing is missing, like the animFileName. It appears we found a CRC_TABLE issue from an earlier patch, but there’s no duplicate, which is good. I’ll proceed with running the syntax now.
+
+
+Ran an inline script with node
+Use a more capable model when needed for this request?
+Got it, staying on Free.
+
+I'll keep moving forward with my tasks. There’s no need for a reaction from the user at this point. I need to test browser exports, but before diving into that, I should explain the progress to the user. It seems we're experiencing some slowness, so I’ll plan on sending brief updates along the way to keep everyone informed. Clear communication is essential, especially when things are a bit slow.
+
+The violet-blue theme, right-side mode/action icons, and iPad touch sizing are in. I’ve also wired pose image export and all three animation formats; I’m validating the actual downloaded files now, including that saved frames share one fitted view.
+
+
+Ran 10 commands, edited 1 file +3 -3, and read 2 files
+
+I’m running a Chromium CDP test and need to create a careful test script, particularly ensuring that Page.setDownloadBehavior is allowed. I’ll fill in the necessary fields and handle mode icons, testing different startup scenarios with clicks counting. For saving PNG files, I’ll click the exact text "Save PNG" and wait for the file. I should also set a target pose for saved changes and use slider inputs for varying values, saving them as necessary. Then, I want to animate transitions between saved poses.
+
+Saving poses and checking exports
+
+I’m clicking each button and waiting for the status and file to be finalized. When saving Pose 1, it auto-creates that name, then I set the wrist number to 55, which generates Pose2—great! The UI resets everything when I select reset. I need to utilize select values with saved names next. For image exports, I'll save both PNG and SVG files and check their existence. I also need to export animation types sequentially while polling the file system for status updates. Lastly, I’ll test the preview feature and verify its completion.
+
+Building preview and export
+
+I need to ensure the preview before the export properly leaves the state as "to" and builds the necessary views. When I click Preview after saving, it reflects the transition from saved Pose1 to target Pose2, which looks good! I might want to check the Page.setDownloadBehavior version in CDP, and the API could help intercept download progress, but polling the file path might not be necessary. Also, it seems the browser may name files with duplicates, like (001), if they repeat. I should keep downloads organized in the /tmp directory.
+
+
+Deleted /tmp/pyxl-final-exports, /tmp/pyxl-cdp-profile5 and 11 other actions
+
+I’m thinking about testing after the mode is ready. I’ll need to run it after a few more patches, but first, I should inspect the output PNG. Maybe I can use a file reader to get a closer look at the visual. I could employ an image reading function to check it. It's all about making sure everything works right before moving on!
+
+Opened test-pose.png
+
+I’m noticing that the exported image is showing transparent areas as black in the renderer, while the bones and palm box appear centered. The hand on the canvas is positioned diagonally because I changed the wrist angle to 60 degrees. The screenshot shows the palm box is bright cyan, but I’m questioning the old CSS fill parsing. Additionally, the hand colors look light lavender, and there’s a need for an iPad test to ensure the mobile emulation triggers correctly. I'm also checking for potential animation bugs in the app code.
+
+Checking for exceptions
+
+I’m considering whether there’s an exceptions array for the nodes that we didn’t record. There was a node error that caused the tool to abort, so I need to check the browser logs for any uncaught script errors in the /tmp/...browser5.log file. While we did monitor runtime.exceptionThrown events, we didn’t print the actual script error. I’ll need to use grep to separate and analyze these logs for any issues.
+
+
+Searched /tmp/pyxl-cdp-browser5.log for "Uncaught|TypeError|ReferenceError|SyntaxError|Error" and 1 other action
+
+Deleting /tmp/pyxl-cdp-profile6, /tmp/pyxl-zip-check and 9 other actions
+
+I'm encountering a CDP error that says "No process for id..." and I'm wondering if the page closed because Chromium might have been killed. Also, the node websocket may have disconnected. It seems like this error relates to remote debugging. I'll need to check the output log and the related files to understand what's really happening here. There's a lot to think through! Let's see what I can find out.
+
+
+Read last 20 lines of /tmp/pyxl-cdp-browser6.log and 1 other action
+
+I think the remote port 9338 might still be in use from an old Chromium process due to previous test failures. It seems the chromium subprocess managed to escape when the shell process was killed, leading to the debugger connecting to the old instance. The "No process id" message indicates a potential disconnection. I'll consider running simple static tests and checking file outputs. We also need to ensure the exports from previous tests are valid and check current app functionality. It might help to test via headless Chromium downloads for better management of processes.
+
+
+Inspected processes and 2 other actions
+
+I notice that the browser page should be visible, but requestAnimationFrame can pause if there's no active window. This could lead to issues in robustness with buildSequence, since it waits for requestAnimationFrame every four frames. If the page is backgrounded or locked, this might hang. Instead, using await new Promise(resolve => setTimeout(resolve, 0)) could help yield to the event loop. I plan to replace related yield points with setTimeout(resolve, 0) for smoother operation.
+
+
+I’m noticing that when using headless Chrome, the page goes to the background, causing some issues with requestAnimationFrame callbacks since they don't trigger. Our buildSequence is hanging, so I’ll try replacing the sequence builder’s rAF await with setTimeout. It seems like the exportAnimation, which also uses rAF, could have similar problems. I also wonder if the remote tests had a default evaluate expression for the previewAnimation. Plus, the status polling might still run even when rAF stalls, leading to delays.
+
+Fixing timing issues
+
+I’m realizing that we might have a 5-minute issue related to the ev call in an async IIFE. Changing from requestAnimationFrame to a timer in both the sequence builder and the export function seems like a better option for background support. The previewAnimation calls after the build sequence still rely on rAF, which can pause when the tab is hidden. To address this, I’ll replace the rAF usage in both buildSequence and exportAnimation with setTimeout. We need to ensure the app works without errors in browser tests too.
+
+
+I realize my patch had a malformed bounds formula. I used right=Math.max(bounds.x+b.width,b.x+b.width) in my patch, but it should actually be right=Math.max(bounds.x+bounds.width,b.x+b.width). It’s important to get this patch exactly right with the correct fragments. I'll double-check the syntax and ensure all parts are properly aligned moving forward. This small error can make a big difference in functionality!
+
+Opened hand-rig.2026-10-22.final.html
+
+Edited hand-rig.2026-10-22.final.html
+
+I realize I need to change the export loop soon, and it seems like using rg might be a good option to explore. Maybe Shell can support that. I’m contemplating how to implement this effectively to make sure everything works as expected. I want to ensure that the changes I make are reliable and fit well with the existing framework I’m working with. Let's proceed with this adjustment!
+
+
+Searched hand-rig.2026-10-22.final.html for "requestAnimationFrame(resolve)"
+
+I'm considering how to apply this patch precisely to the specific segment of code. I need to focus on the line await new Promise(resolve=>requestAnimationFrame(resolve))}}let blob,extension; and replace the timer there. It's essential to ensure I'm making the change accurately to avoid any errors later. I’m curious if I should test it immediately after or check something else first to confirm its functionality. Let's proceed carefully!
+
+
+Edited hand-rig.2026-10-22.final.html
+
+I need to get the current status, so I'll test a direct transition zip using Runtime.evaluate and Array.from(...), skipping the preview. After each format, I’ll wait for the status and check for any runtime evaluation errors, printing the exception details if there are any. I plan to create a test file and use CDP port 9339.
+
+Once the state is set and savePose is called, I’ll poll for the status, check for the ZIP animation saved message, and then inspect the blob URL download. Also, I might need to output a manifest. Let’s run this!
+
+
+Deleted /tmp/pyxl-cdp-profile7, /tmp/pyxl-zip-check and 9 other actions
+
+I’m planning to debug by using one tool call with the browser and Node. The first step is to launch a single page and then evaluate an operation that creates poses. I want to return options for innerHTML, values, and the length of selectedOptions without any export. I’ll ensure the CDP starts on the unique port 9340 and confirm that there aren't any zombie processes before proceeding. Let's get this sorted!
+
+
+Ran chromium and 3 other actions
+
+I'm trying to understand why only Pose1 is saved. It looks like the first click triggers the save function, then when I change the wrist and click again, it only saves Pose1 again. It seems the poseName retains "Pose1" after the first save, so it overwrites it instead of creating Pose2. It’s becoming clear that the UI should generate a new pose automatically unless the user has entered a name. I wonder if clearing the name after saving would help.
+
+Rethinking pose saving logic
+
+I'm considering how the Save (+) action works; it usually creates a new pose, but repeated clicks update the selected one, right? If users want to save a separate pose but the name is still there, it just overwrites the existing one. Maybe the savePoseFromToolbar function should assign a unique name for each click, regardless of the current selection. But if a user types a name that already exists, should it allow overwriting? I think the plus icon should always create a new pose unless they specifically choose to overwrite.
+
+Clarifying pose naming process
+
+I'm thinking through the testing sequence: the first click should create "Pose1," and after saving, it retains that name. On the next click, if the name already exists, it automatically generates "Pose2," which seems like a good solution! Users can type a unique name, and if they type something existing, the system will assign a unique one instead of overwriting. To intentionally overwrite, they can use the designated save current pose button. That plan sounds solid!
+
+
+Edited hand-rig.2026-10-22.final.html
+
+I need to ensure that I'm checking resolved selectors to always choose valid values. The user's input through the debugger shouldn’t be able to set invalid values. I need to verify a robust user workflow and retest the ZIP info with the new app setup. The script creates Pose1 and Pose2 and sets the selects. After clicking the button, there shouldn't be any errors, so I’ll include print options to confirm everything is working smoothly.
+
+
+Deleted /tmp/pyxl-cdp-profile9, /tmp/pyxl-zip-check and 9 other actions
+
+I'm figuring out a layout where I want to use 2fr for the first item and 1fr for the third item. The first element seems to be around 780, so I’m thinking that 780 multiplied by 0.666 might work. I want to ensure there’s safe padding and that I end up around 760 without any overflow. It's all about finding the right balance here! Let’s see how this plays out.
+
+
+Deleted /tmp/pyxl-cdp-profile10 and 4 other actions
+
+I'm examining how the iPad handles three columns in portrait mode at 262px, and it works well for landscape too. I need to set the mode toolbar at 48x48 pixels and ensure responsiveness is maintained. After the patch, I'll run end-to-end animations across all formats.
+
+It's important to validate the GIF/APNG exports after saving and confirm that prior exports remain valid. Given some issues with pose transitions, I’ll retest to guarantee the animations work correctly without cropping.
+
+Validating GIF/APNG functionality
+
+I've confirmed that the GIF/APNG is valid in the previous file, with no changes in serialization despite mode adjustments. Now, I need to zip the current files and consider testing all formats with the animation state and APNG parse. I'll run a comprehensive test that should take about 30 seconds, although I might not need to if earlier tests already cover it.
+
+I need to confirm that the current GIF/APNG code from the branch has no regressions since we last tested PNG/SVG/GIF/APNG after applying the pngChunk fix.
+
+Analyzing export issues
+
+Yes, the current setup reflects earlier adjustments and the fix for the Save button. The GIF/APNG from Pose 1 to Pose 2 became invalid due to duplication, leading to an invalid selection when saving. Only Pose 1 remained since it saved twice, but the output GIF/APNG shows no error because the branch doesn't consider option labels.
+
+Now, I'm focusing on ensuring the exact transition is correct. I’ll zip the files and evaluate the actual frame differences, confirming wrist positions for both poses.
+
+
+Before anything else, I should take a screenshot to inspect the app's design. This might help us check for any visual issues or overlaps, but I wonder if it's strictly necessary since we've already delivered the design file. We’ve made some changes to colors, and I should verify that everything looks good on the iPad. It feels like I'm almost ready for final tests, so I might need to provide another update after this progress step.
+
+PNG, SVG, GIF, and APNG now produce valid image files; the ZIP archive also passes its integrity check. I fixed one save-icon edge case so each “+” creates a new pose instead of silently replacing the previous one, and confirmed the iPad layout stays in bounds in portrait and landscape. I’m doing a final fresh run with two distinct poses.
+
+
+Ran 2 commands
+
+Pyxl Hand Rig — iPad-ready update
+HTML
+
+Opened in preview
+
+Used 1 tool
+Updated standalone HTML delivered above.
+
+Added right-side icon controls for Full hand, Claw, Trident, and Mickey’s Glove, plus Reset, Save (+), and Delete (−).
+Added transparent PNG/SVG pose exports and pose-to-pose preview with GIF, APNG, and ZIP exports. Animation frames share a square fitted view, keeping the whole hand centered and its wrist/joint anchors aligned; ZIP includes numbered PNG frames and a manifest.
+Shifted the app colors toward violet-blue and kept the desktop layout while improving iPad touch targets, safe-area handling, and portrait/landscape layout.
+I verified the image and animation files, checked the ZIP archive, and tested the iPad-sized layouts for horizontal overflow.
+
+Worked for 7m
+ · Worked for 7m · 
+Just now
+
+Scroll to latest
+
+New project creation - Replit

@@ -1,0 +1,6 @@
+{
+  "name": "Pyxl Hand Rig v2",
+  "description": "Poseable 2D hand rig in SVG with forward kinematics, CCD inverse kinematics, bone and joint dragging, and pose presets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

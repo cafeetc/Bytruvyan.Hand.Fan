@@ -1,0 +1,6 @@
+{
+  "summary":  "Implementation plan for integrating the full export and animation suite (transparent PNG/SVG, pose-to-pose animation preview, client-side GIF, APNG, and frame-by-frame ZIP with manifest), along with a floating vertical canvas toolbar featuring a looping build selector, while preserving our high-contrast light gray canvas backdrop and dark purple/greenyellow silhouette hand styling.",
+  "updatedAt":  "2026-10-23T00:59:55.378777504Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}

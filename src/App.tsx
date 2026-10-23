@@ -91,8 +91,48 @@ import {
 const STORAGE_KEY = '***';
 const ALT_STORAGE_KEY = 'pyxl.hand.v2';
 
+function MenuSection({
+  title,
+  icon: Icon,
+  badge,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  icon?: React.ElementType;
+  badge?: string | number;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <details
+      open={defaultOpen}
+      className="group bg-[var(--bg)] border border-[var(--border)] rounded-lg overflow-hidden transition-all duration-200"
+    >
+      <summary className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-[var(--fg)] cursor-pointer select-none hover:bg-[var(--panel)] transition-colors">
+        <div className="flex items-center gap-2">
+          {Icon && <Icon className="w-3.5 h-3.5 text-purple-400 group-open:text-[#adff2f] transition-colors" />}
+          <span className="tracking-wide">{title}</span>
+          {badge !== undefined && (
+            <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-purple-500/20 text-purple-300 font-mono">
+              {badge}
+            </span>
+          )}
+        </div>
+        <div className="text-[10px] text-[var(--fg-muted)] group-open:rotate-180 transition-transform duration-200">
+          ▼
+        </div>
+      </summary>
+      <div className="p-3 pt-1 border-t border-[var(--border)]/60 flex flex-col gap-2.5 animate-in slide-in-from-top-2 duration-150">
+        {children}
+      </div>
+    </details>
+  );
+}
+
 export default function App() {
   const [state, setState] = useState<State>(defaultState);
+  const [activeFrameIndex, setActiveFrameIndex] = useState<number | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [stageHeightPct, setStageHeightPct] = useState<number>(66.667);
   const [selectedPoseKey, setSelectedPoseKey] = useState<string>('');
@@ -305,13 +345,10 @@ export default function App() {
   }, []);
 
   // Recenter SVG viewbox with Fixed Camera logic:
-  // "Fixed Camera. Keep current default, but only move camera when we rotate far enough down to where we need to move the camera All non lower Y plane motion should keep static camera."
+  // "Fixed Camera. Keep current default, but only move camera when we rotate far enough down to where we need to move the camera. All non lower Y plane motion should keep static camera."
   const updateViewBox = useCallback(() => {
     if (isViewFrozenRef.current || !handRef.current || !stageRef.current) return;
     try {
-      const bb = handRef.current.getBBox();
-      if (bb.width <= 0 || bb.height <= 0) return;
-
       const rect = stageRef.current.getBoundingClientRect();
       const stageW = rect.width || 800;
       const stageH = rect.height || 500;
@@ -327,31 +364,30 @@ export default function App() {
       const defY = 1.3 - defH;
       const defBottom = 1.3;
 
+      const bb = handRef.current.getBBox();
+      if (bb.width <= 0 || bb.height <= 0) {
+        setViewBox({ x: defX, y: defY, w: defW, h: defH });
+        return;
+      }
+
       const handBottom = bb.y + bb.height;
-      const handTop = bb.y;
 
       // When all hand motion stays in non-lower Y plane (handBottom <= defBottom),
-      // the camera stays COMPLETELY STATIC at the default view!
+      // the camera stays COMPLETELY STATIC at the default view across ALL builds (standard, claw, trident, mickey)!
       if (handBottom <= defBottom) {
         setViewBox({ x: defX, y: defY, w: defW, h: defH });
         return;
       }
 
       // ONLY when we rotate far enough down into the lower Y plane (handBottom > defBottom)
-      // do we move the camera down to accommodate:
-      const targetTop = Math.min(defY, handTop - 0.6);
-      const targetBottom = handBottom + 0.6;
+      // do we extend the bottom of the camera to accommodate:
+      const targetTop = defY;
+      const targetBottom = Math.max(defBottom, handBottom + 0.6);
       const neededH = Math.max(defH, targetBottom - targetTop);
       const targetH = neededH;
       const targetW = aspect >= 1 ? targetH * aspect : targetH;
 
-      // Keep horizontal position centered around 0 unless hand spans outside
-      let targetX = -targetW / 2;
-      if (bb.x < -targetW / 2 + 0.5 || bb.x + bb.width > targetW / 2 - 0.5) {
-        targetX = (bb.x + bb.width / 2) - targetW / 2;
-      }
-
-      setViewBox({ x: targetX, y: targetTop, w: targetW, h: targetH });
+      setViewBox({ x: -targetW / 2, y: targetTop, w: targetW, h: targetH });
     } catch (e) {
       // Ignore bbox errors during initialization
     }
@@ -859,6 +895,24 @@ export default function App() {
     });
     return { presets, saved };
   }, [poseSearchFilter, poseCategoryFilter, savedPoses]);
+
+  // Keyframe filmstrip preview calculation (6 interpolated frames: 0%, 20%, 40%, 60%, 80%, 100%)
+  const filmstripFrames = useMemo(() => {
+    if (!animFromKey || !animToKey) return [];
+    const from = getPoseByKey(animFromKey);
+    const to = getPoseByKey(animToKey);
+    const count = 6;
+    const frames = [];
+    for (let i = 0; i < count; i++) {
+      const t = i / (count - 1);
+      const pose = interpolatePose(from, to, t);
+      const markup = generateHandSvgMarkup(pose);
+      const label = `${Math.round(t * 100)}%`;
+      const timeSec = (t * animDuration).toFixed(2) + 's';
+      frames.push({ index: i, t, pose, markup, label, timeSec });
+    }
+    return frames;
+  }, [animFromKey, animToKey, animDuration, getPoseByKey]);
 
   // Toggle live transition preview on canvas
   const togglePreview = useCallback(async () => {
@@ -1555,129 +1609,128 @@ export default function App() {
 
             {/* LEFT PANEL 1: Pose Library & Presets */}
             {activeLeftPanel === 'poses' && (
-              <div className="flex flex-col gap-3 text-xs">
-                {/* Search Bar & Category Filter Chips */}
-                <div className="flex flex-col gap-2">
-                  <div className="relative flex items-center">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 text-[var(--fg-muted)]" />
-                    <input
-                      type="text"
-                      placeholder="Search poses..."
-                      value={poseSearchFilter}
-                      onChange={e => setPoseSearchFilter(e.target.value)}
-                      className="w-full bg-[var(--bg)] text-[var(--fg)] pl-8 pr-2 py-1.5 text-xs rounded border border-[var(--border)] focus:border-purple-400 outline-none"
-                    />
-                    {poseSearchFilter && (
-                      <button
-                        onClick={() => setPoseSearchFilter('')}
-                        className="absolute right-2 text-xs text-[var(--fg-muted)] hover:text-[var(--fg)]"
-                      >
-                        ✕
-                      </button>
+              <div className="flex flex-col gap-2.5 text-xs">
+                <MenuSection title="Quick Pose Presets" icon={BookOpen} defaultOpen={true}>
+                  {/* Search Bar & Category Filter Chips */}
+                  <div className="flex flex-col gap-2">
+                    <div className="relative flex items-center">
+                      <Search className="w-3.5 h-3.5 absolute left-2.5 text-[var(--fg-muted)]" />
+                      <input
+                        type="text"
+                        placeholder="Search poses..."
+                        value={poseSearchFilter}
+                        onChange={e => setPoseSearchFilter(e.target.value)}
+                        className="w-full bg-[var(--bg)] text-[var(--fg)] pl-8 pr-2 py-1.5 text-xs rounded border border-[var(--border)] focus:border-purple-400 outline-none"
+                      />
+                      {poseSearchFilter && (
+                        <button
+                          onClick={() => setPoseSearchFilter('')}
+                          className="absolute right-2 text-xs text-[var(--fg-muted)] hover:text-[var(--fg)]"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      {(['all', 'presets', 'saved'] as const).map(cat => (
+                        <button
+                          key={cat}
+                          onClick={() => setPoseCategoryFilter(cat)}
+                          className={`px-2 py-0.5 rounded text-[11px] capitalize transition-all ${
+                            poseCategoryFilter === cat
+                              ? 'bg-purple-600 text-white font-medium shadow-xs'
+                              : 'bg-[var(--bg)] text-[var(--fg-muted)] hover:text-[var(--fg)] border border-[var(--border)]'
+                          }`}
+                        >
+                          {cat === 'all' ? 'All Poses' : cat === 'presets' ? 'Canonical' : 'Custom'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Grid of Poses */}
+                  <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto p-1.5 bg-[var(--bg)] rounded-lg border border-[var(--border)]">
+                    {filteredPoseList.presets.map(k => {
+                      const isSelected = selectedPoseKey === k;
+                      return (
+                        <button
+                          key={k}
+                          onClick={() => handleApplyPose(k)}
+                          className={`flex items-center justify-between px-2 py-1.5 rounded text-left text-xs transition-all ${
+                            isSelected
+                              ? 'bg-purple-600/30 border border-purple-400 text-purple-200 font-semibold shadow-xs'
+                              : 'bg-[var(--panel)] border border-[var(--border)] hover:border-purple-400 text-[var(--fg)] hover:text-purple-300'
+                          }`}
+                          title={`Interpolate to pose: ${k}`}
+                        >
+                          <span className="truncate">{k}</span>
+                          {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-[#adff2f] shrink-0 ml-1"></span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </MenuSection>
+
+                <MenuSection title="User Saved Poses" icon={Bookmark} badge={filteredPoseList.saved.length} defaultOpen={true}>
+                  <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-[var(--bg)] rounded-lg border border-[var(--border)]">
+                    {filteredPoseList.saved.map(k => {
+                      const isSelected = selectedPoseKey === k;
+                      return (
+                        <button
+                          key={k}
+                          onClick={() => handleApplyPose(k)}
+                          className={`flex items-center justify-between px-2 py-1.5 rounded text-left text-xs transition-all ${
+                            isSelected
+                              ? 'bg-[#adff2f]/20 border border-[#adff2f] text-[#adff2f] font-semibold shadow-xs'
+                              : 'bg-[var(--panel)] border border-[var(--border)] hover:border-[#adff2f] text-[var(--fg)] hover:text-[#adff2f]'
+                          }`}
+                          title={`User saved pose: ${k}`}
+                        >
+                          <span className="truncate flex items-center gap-1">
+                            <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono">user</span>
+                            {k}
+                          </span>
+                          {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-[#adff2f] shrink-0 ml-1"></span>}
+                        </button>
+                      );
+                    })}
+                    {filteredPoseList.saved.length === 0 && (
+                      <div className="col-span-2 py-3 text-center text-[var(--fg-muted)] text-[11px]">
+                        No user poses saved yet
+                      </div>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1.5">
-                    {(['all', 'presets', 'saved'] as const).map(cat => (
-                      <button
-                        key={cat}
-                        onClick={() => setPoseCategoryFilter(cat)}
-                        className={`px-2 py-0.5 rounded text-[11px] capitalize transition-all ${
-                          poseCategoryFilter === cat
-                            ? 'bg-purple-600 text-white font-medium shadow-xs'
-                            : 'bg-[var(--bg)] text-[var(--fg-muted)] hover:text-[var(--fg)] border border-[var(--border)]'
-                        }`}
-                      >
-                        {cat === 'all' ? 'All Poses' : cat === 'presets' ? 'Canonical' : 'Custom'}
-                      </button>
-                    ))}
+                  {/* Save Current Pose Field */}
+                  <div className="flex items-center gap-1.5 pt-1 border-t border-[var(--border)]">
+                    <input
+                      type="text"
+                      placeholder="Pose name (or empty for auto #)..."
+                      value={poseNameInput}
+                      onChange={e => setPoseNameInput(e.target.value)}
+                      className="flex-1 bg-[var(--bg)] text-[var(--fg)] border border-[var(--border)] rounded px-2 py-1 text-xs focus:border-purple-400 outline-none"
+                    />
+                    <button
+                      onClick={handleSavePose}
+                      className="px-2.5 py-1 text-xs rounded bg-purple-600 text-white hover:bg-purple-500 font-medium shadow-xs"
+                      title="Save current pose"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={handleDeletePose}
+                      disabled={!selectedPoseKey || !!PRESET_POSES[selectedPoseKey] || selectedPoseKey === 'Neutral flat (default)'}
+                      className="px-2 py-1 text-xs rounded border border-red-500/40 text-red-400 hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="Delete selected custom pose"
+                    >
+                      Delete
+                    </button>
                   </div>
-                </div>
+                </MenuSection>
 
-                {/* Grid of Poses */}
-                <div className="grid grid-cols-2 gap-1.5 max-h-56 overflow-y-auto p-1.5 bg-[var(--bg)] rounded-lg border border-[var(--border)]">
-                  {/* Presets */}
-                  {filteredPoseList.presets.map(k => {
-                    const isSelected = selectedPoseKey === k;
-                    return (
-                      <button
-                        key={k}
-                        onClick={() => handleApplyPose(k)}
-                        className={`flex items-center justify-between px-2 py-1.5 rounded text-left text-xs transition-all ${
-                          isSelected
-                            ? 'bg-purple-600/30 border border-purple-400 text-purple-200 font-semibold shadow-xs'
-                            : 'bg-[var(--panel)] border border-[var(--border)] hover:border-purple-400 text-[var(--fg)] hover:text-purple-300'
-                        }`}
-                        title={`Interpolate to pose: ${k}`}
-                      >
-                        <span className="truncate">{k}</span>
-                        {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-[#adff2f] shrink-0 ml-1"></span>}
-                      </button>
-                    );
-                  })}
-
-                  {/* Saved User Poses */}
-                  {filteredPoseList.saved.map(k => {
-                    const isSelected = selectedPoseKey === k;
-                    return (
-                      <button
-                        key={k}
-                        onClick={() => handleApplyPose(k)}
-                        className={`flex items-center justify-between px-2 py-1.5 rounded text-left text-xs transition-all ${
-                          isSelected
-                            ? 'bg-[#adff2f]/20 border border-[#adff2f] text-[#adff2f] font-semibold shadow-xs'
-                            : 'bg-[var(--panel)] border border-[var(--border)] hover:border-[#adff2f] text-[var(--fg)] hover:text-[#adff2f]'
-                        }`}
-                        title={`User saved pose: ${k}`}
-                      >
-                        <span className="truncate flex items-center gap-1">
-                          <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono">user</span>
-                          {k}
-                        </span>
-                        {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-[#adff2f] shrink-0 ml-1"></span>}
-                      </button>
-                    );
-                  })}
-
-                  {filteredPoseList.presets.length === 0 && filteredPoseList.saved.length === 0 && (
-                    <div className="col-span-2 py-4 text-center text-[var(--fg-muted)] text-[11px]">
-                      No matching poses found
-                    </div>
-                  )}
-                </div>
-
-                {/* Save Current Pose Field */}
-                <div className="flex items-center gap-1.5 pt-1 border-t border-[var(--border)]">
-                  <input
-                    type="text"
-                    placeholder="Pose name (or empty for auto #)..."
-                    value={poseNameInput}
-                    onChange={e => setPoseNameInput(e.target.value)}
-                    className="flex-1 bg-[var(--bg)] text-[var(--fg)] border border-[var(--border)] rounded px-2 py-1 text-xs focus:border-purple-400 outline-none"
-                  />
-                  <button
-                    onClick={handleSavePose}
-                    className="px-2.5 py-1 text-xs rounded bg-purple-600 text-white hover:bg-purple-500 font-medium shadow-xs"
-                    title="Save current pose"
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={handleDeletePose}
-                    disabled={!selectedPoseKey || !!PRESET_POSES[selectedPoseKey] || selectedPoseKey === 'Neutral flat (default)'}
-                    className="px-2 py-1 text-xs rounded border border-red-500/40 text-red-400 hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
-                    title="Delete selected custom pose"
-                  >
-                    Delete
-                  </button>
-                </div>
-
-                {/* JSON Pose Import/Export Accordion */}
-                <details className="bg-[var(--bg)] border border-[var(--border)] rounded-md p-2 pt-1 text-xs">
-                  <summary className="font-semibold text-[11px] text-[var(--fg-muted)] cursor-pointer select-none">
-                    JSON Pose Data (Import / Export)
-                  </summary>
-                  <div className="flex flex-col gap-2 mt-2">
+                <MenuSection title="JSON Pose Data" icon={FileCode} defaultOpen={false}>
+                  <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={handleExportJson}
@@ -1700,83 +1753,81 @@ export default function App() {
                       className="w-full bg-[var(--panel)] text-[var(--fg)] border border-[var(--border)] rounded p-1.5 text-[10px] font-mono focus:border-purple-400 outline-none"
                     />
                   </div>
-                </details>
+                </MenuSection>
               </div>
             )}
 
             {/* LEFT PANEL 2: Live Pose Morph & Blend */}
             {activeLeftPanel === 'morph' && (
-              <div className="flex flex-col gap-3 text-xs">
-                {/* Target Pose Selector */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] text-[var(--fg-muted)] font-medium">Target Morph Pose:</label>
-                  <select
-                    value={morphTargetKey}
-                    onChange={e => {
-                      setMorphTargetKey(e.target.value);
-                      setMorphAmount(0);
-                      morphBaseRef.current = { ...stateRef.current };
-                    }}
-                    className="bg-[var(--bg)] text-[var(--fg)] border border-[var(--border)] rounded px-2 py-1.5 text-xs focus:border-[#adff2f] outline-none"
-                  >
-                    <optgroup label="Presets">
-                      {Object.keys(PRESET_POSES).map(k => (
-                        <option key={k} value={k}>
-                          {k}
-                        </option>
-                      ))}
-                    </optgroup>
-                    {Object.keys(savedPoses).length > 0 && (
-                      <optgroup label="Custom Poses">
-                        {Object.keys(savedPoses).map(k => (
+              <div className="flex flex-col gap-2.5 text-xs">
+                <MenuSection title="Target Pose & Morph Scrub" icon={Sliders} defaultOpen={true}>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] text-[var(--fg-muted)] font-medium">Target Morph Pose:</label>
+                    <select
+                      value={morphTargetKey}
+                      onChange={e => {
+                        setMorphTargetKey(e.target.value);
+                        setMorphAmount(0);
+                        morphBaseRef.current = { ...stateRef.current };
+                      }}
+                      className="bg-[var(--bg)] text-[var(--fg)] border border-[var(--border)] rounded px-2 py-1.5 text-xs focus:border-[#adff2f] outline-none"
+                    >
+                      <optgroup label="Presets">
+                        {Object.keys(PRESET_POSES).map(k => (
                           <option key={k} value={k}>
                             {k}
                           </option>
                         ))}
                       </optgroup>
-                    )}
-                  </select>
-                </div>
-
-                {/* Morph Scrub Slider (0% to 100%) */}
-                <div className="flex flex-col gap-1.5 p-2.5 rounded-lg bg-[var(--bg)] border border-[var(--border)]">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-semibold text-[#adff2f]">Live Morph Amount</span>
-                    <span className="font-mono text-[var(--fg)] font-bold">{morphAmount}%</span>
+                      {Object.keys(savedPoses).length > 0 && (
+                        <optgroup label="Custom Poses">
+                          {Object.keys(savedPoses).map(k => (
+                            <option key={k} value={k}>
+                              {k}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
                   </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={morphAmount}
-                    onChange={e => handleMorphChange(Number(e.target.value))}
-                    className="w-full accent-[#adff2f] cursor-pointer h-2"
-                  />
-                  <div className="flex items-center justify-between text-[10px] text-[var(--fg-muted)]">
-                    <span>Current Hand (0%)</span>
-                    <span>Target ({morphTargetKey})</span>
+
+                  <div className="flex flex-col gap-1.5 p-2 rounded-lg bg-[var(--panel)] border border-[var(--border)]">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-semibold text-[#adff2f]">Live Morph Amount</span>
+                      <span className="font-mono text-[var(--fg)] font-bold">{morphAmount}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={morphAmount}
+                      onChange={e => handleMorphChange(Number(e.target.value))}
+                      className="w-full accent-[#adff2f] cursor-pointer h-2"
+                    />
+                    <div className="flex items-center justify-between text-[10px] text-[var(--fg-muted)]">
+                      <span>Current Hand (0%)</span>
+                      <span>Target ({morphTargetKey})</span>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleApplyMorph}
-                    className="flex-1 py-1.5 rounded bg-[#adff2f] text-black font-semibold text-xs hover:bg-[#bcf94a] transition-all shadow-xs"
-                  >
-                    Commit Morph
-                  </button>
-                  <button
-                    onClick={handleResetPose}
-                    className="px-3 py-1.5 rounded border border-[var(--border)] hover:border-purple-400 text-[var(--fg-muted)] hover:text-[var(--fg)] text-xs"
-                    title="Reset to Neutral Flat"
-                  >
-                    Reset
-                  </button>
-                </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleApplyMorph}
+                      className="flex-1 py-1.5 rounded bg-[#adff2f] text-black font-semibold text-xs hover:bg-[#bcf94a] transition-all shadow-xs"
+                    >
+                      Commit Morph
+                    </button>
+                    <button
+                      onClick={handleResetPose}
+                      className="px-3 py-1.5 rounded border border-[var(--border)] hover:border-purple-400 text-[var(--fg-muted)] hover:text-[var(--fg)] text-xs"
+                      title="Reset to Neutral Flat"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                </MenuSection>
 
-                {/* Master Sliders */}
-                <div className="flex flex-col gap-2 pt-2 border-t border-[var(--border)]">
-                  <span className="text-[11px] font-semibold text-purple-400">Master Sliders</span>
+                <MenuSection title="Master Rig Controls" icon={Flame} defaultOpen={false}>
                   <SliderRow
                     label="All Fingers Curl"
                     unit="°"
@@ -1811,7 +1862,7 @@ export default function App() {
                     value={state.wrist}
                     onChange={v => setState(prev => ({ ...prev, wrist: v }))}
                   />
-                </div>
+                </MenuSection>
               </div>
             )}
           </div>
@@ -1977,18 +2028,9 @@ export default function App() {
 
             {/* PANEL CONTENT 1: Pose Library & Hand Rig */}
             {activeRightPanel === 'poses' && (
-              <div className="flex flex-col gap-3 text-xs">
-                {/* Visual Pose Library Grid */}
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-semibold text-[var(--accent)] flex items-center gap-1">
-                      <Bookmark className="w-3 h-3 text-[#adff2f]" />
-                      Pose Library ({Object.keys(PRESET_POSES).length + Object.keys(savedPoses).length})
-                    </span>
-                    <span className="text-[10px] text-[var(--fg-muted)]">Click to interpolate</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto p-1.5 bg-[var(--bg)] rounded-lg border border-[var(--border)]">
-                    {/* Canonical Presets */}
+              <div className="flex flex-col gap-2.5 text-xs">
+                <MenuSection title="Preset Poses Library" icon={Bookmark} defaultOpen={true}>
+                  <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto p-1.5 bg-[var(--bg)] rounded-lg border border-[var(--border)]">
                     {Object.keys(PRESET_POSES).map(k => {
                       const isSelected = selectedPoseKey === k;
                       return (
@@ -2007,8 +2049,11 @@ export default function App() {
                         </button>
                       );
                     })}
+                  </div>
+                </MenuSection>
 
-                    {/* User Saved Poses */}
+                <MenuSection title="User Saved Poses" icon={Bookmark} badge={Object.keys(savedPoses).length} defaultOpen={true}>
+                  <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto p-1.5 bg-[var(--bg)] rounded-lg border border-[var(--border)]">
                     {Object.keys(savedPoses).map(k => {
                       const isSelected = selectedPoseKey === k;
                       return (
@@ -2030,38 +2075,40 @@ export default function App() {
                         </button>
                       );
                     })}
+                    {Object.keys(savedPoses).length === 0 && (
+                      <div className="col-span-2 py-3 text-center text-[var(--fg-muted)] text-[11px]">
+                        No user poses saved yet
+                      </div>
+                    )}
                   </div>
-                </div>
 
-                {/* Save Current Pose Field */}
-                <div className="flex items-center gap-1.5 pt-1 border-t border-[var(--border)]">
-                  <input
-                    type="text"
-                    placeholder="Pose name (or leave empty for auto #)..."
-                    value={poseNameInput}
-                    onChange={e => setPoseNameInput(e.target.value)}
-                    className="flex-1 bg-[var(--bg)] text-[var(--fg)] border border-[var(--border)] rounded px-2 py-1 text-xs focus:border-[var(--accent)] outline-none"
-                  />
-                  <button
-                    onClick={handleSavePose}
-                    className="px-2.5 py-1 text-xs rounded bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] font-medium shadow-xs"
-                    title="Save current pose"
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={handleDeletePose}
-                    disabled={!selectedPoseKey || !!PRESET_POSES[selectedPoseKey] || selectedPoseKey === 'Neutral flat (default)'}
-                    className="px-2 py-1 text-xs rounded border border-red-500/40 text-red-400 hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
-                    title="Delete selected custom pose"
-                  >
-                    Delete
-                  </button>
-                </div>
+                  <div className="flex items-center gap-1.5 pt-1 border-t border-[var(--border)]">
+                    <input
+                      type="text"
+                      placeholder="Pose name (or empty for auto #)..."
+                      value={poseNameInput}
+                      onChange={e => setPoseNameInput(e.target.value)}
+                      className="flex-1 bg-[var(--bg)] text-[var(--fg)] border border-[var(--border)] rounded px-2 py-1 text-xs focus:border-[var(--accent)] outline-none"
+                    />
+                    <button
+                      onClick={handleSavePose}
+                      className="px-2.5 py-1 text-xs rounded bg-purple-600 text-white hover:bg-purple-500 font-medium shadow-xs"
+                      title="Save current pose"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={handleDeletePose}
+                      disabled={!selectedPoseKey || !!PRESET_POSES[selectedPoseKey] || selectedPoseKey === 'Neutral flat (default)'}
+                      className="px-2 py-1 text-xs rounded border border-red-500/40 text-red-400 hover:bg-red-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="Delete selected custom pose"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </MenuSection>
 
-                {/* Global Hand Rig Sliders */}
-                <div className="flex flex-col gap-2 pt-2 border-t border-[var(--border)]">
-                  <span className="text-[11px] font-semibold text-[var(--accent)]">Hand Angles & Splay</span>
+                <MenuSection title="Hand Angles & Splay" icon={Flame} defaultOpen={false}>
                   <SliderRow
                     label="Wrist Angle"
                     unit="°"
@@ -2086,10 +2133,9 @@ export default function App() {
                     value={state.tilt}
                     onChange={v => setState(prev => ({ ...prev, tilt: v }))}
                   />
-                </div>
+                </MenuSection>
 
-                {/* Rig Toggles */}
-                <div className="flex flex-col gap-1.5 pt-2 border-t border-[var(--border)]">
+                <MenuSection title="Rig Options & Toggles" icon={Sliders} defaultOpen={false}>
                   <label className="flex items-center gap-2 cursor-pointer text-[var(--fg)]">
                     <input
                       type="checkbox"
@@ -2130,17 +2176,13 @@ export default function App() {
                       onChange={e => setState(prev => ({ ...prev, boxes: e.target.checked }))}
                       className="accent-[var(--accent)]"
                     />
-                    <span>Show Palm Boxes</span>
-                    <span className="text-[10px] text-[var(--fg-muted)]">(4×4 guide)</span>
+                    <span>Show Bone & Palm Boxes</span>
+                    <span className="text-[10px] text-[var(--fg-muted)]">(4:1, 2:1, 1:1, 1:1 + 12.5% margins)</span>
                   </label>
-                </div>
+                </MenuSection>
 
-                {/* JSON Import / Export Accordion */}
-                <details className="bg-[var(--bg)] border border-[var(--border)] rounded-md p-2 pt-1 text-xs">
-                  <summary className="font-semibold text-[11px] text-[var(--fg-muted)] cursor-pointer select-none">
-                    JSON Pose Data (Import / Export)
-                  </summary>
-                  <div className="flex flex-col gap-2 mt-2">
+                <MenuSection title="JSON Pose Data" icon={FileCode} defaultOpen={false}>
+                  <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={handleExportJson}
@@ -2156,223 +2198,291 @@ export default function App() {
                       </button>
                     </div>
                     <textarea
-                      rows={4}
+                      rows={3}
                       placeholder="Paste JSON pose or click Export JSON..."
                       value={jsonText}
                       onChange={e => setJsonText(e.target.value)}
                       className="w-full bg-[var(--panel)] text-[var(--fg)] border border-[var(--border)] rounded p-1.5 text-[10px] font-mono focus:border-[var(--accent)] outline-none"
                     />
                   </div>
-                </details>
+                </MenuSection>
               </div>
             )}
 
             {/* PANEL CONTENT 2: Save Pose Image */}
             {activeRightPanel === 'export-image' && (
-              <div className="flex flex-col gap-3 text-xs">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] text-[var(--fg-muted)] font-medium">Export Filename Stem:</label>
-                  <input
-                    type="text"
-                    value={exportStem}
-                    onChange={e => setExportStem(e.target.value)}
-                    placeholder="Filename stem (e.g. pyxl-hand)..."
-                    className="bg-[var(--bg)] text-[var(--fg)] border border-[var(--border)] rounded px-2 py-1 text-xs focus:border-[var(--accent)] outline-none font-mono"
-                  />
-                </div>
+              <div className="flex flex-col gap-2.5 text-xs">
+                <MenuSection title="Image Export Formats" icon={ImageIcon} defaultOpen={true}>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] text-[var(--fg-muted)] font-medium">Export Filename Stem:</label>
+                    <input
+                      type="text"
+                      value={exportStem}
+                      onChange={e => setExportStem(e.target.value)}
+                      placeholder="Filename stem (e.g. pyxl-hand)..."
+                      className="bg-[var(--bg)] text-[var(--fg)] border border-[var(--border)] rounded px-2 py-1 text-xs focus:border-[var(--accent)] outline-none font-mono"
+                    />
+                  </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <button
-                    onClick={handleExportPng}
-                    disabled={isExporting}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded bg-[var(--bg)] border border-[var(--border)] hover:border-[#adff2f] text-[var(--fg)] hover:text-[#adff2f] text-xs font-semibold transition-all shadow-xs disabled:opacity-40"
-                    title="Download crisp transparent PNG image (1024×1024)"
-                  >
-                    <Download className="w-3.5 h-3.5 text-[#adff2f]" />
-                    Save PNG
-                  </button>
-                  <button
-                    onClick={handleExportSvg}
-                    disabled={isExporting}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded bg-[var(--bg)] border border-[var(--border)] hover:border-purple-400 text-[var(--fg)] hover:text-purple-400 text-xs font-semibold transition-all shadow-xs disabled:opacity-40"
-                    title="Download vector SVG with exact stroke styling"
-                  >
-                    <Download className="w-3.5 h-3.5 text-purple-400" />
-                    Save SVG
-                  </button>
-                </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      onClick={handleExportPng}
+                      disabled={isExporting}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 rounded bg-[var(--bg)] border border-[var(--border)] hover:border-[#adff2f] text-[var(--fg)] hover:text-[#adff2f] text-xs font-semibold transition-all shadow-xs disabled:opacity-40"
+                      title="Download crisp transparent PNG image (1024×1024)"
+                    >
+                      <Download className="w-3.5 h-3.5 text-[#adff2f]" />
+                      Save PNG
+                    </button>
+                    <button
+                      onClick={handleExportSvg}
+                      disabled={isExporting}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 rounded bg-[var(--bg)] border border-[var(--border)] hover:border-purple-400 text-[var(--fg)] hover:text-purple-400 text-xs font-semibold transition-all shadow-xs disabled:opacity-40"
+                      title="Download vector SVG with exact stroke styling"
+                    >
+                      <Download className="w-3.5 h-3.5 text-purple-400" />
+                      Save SVG
+                    </button>
+                  </div>
+                </MenuSection>
 
-                <div className="text-[11px] text-[var(--fg-muted)] leading-relaxed p-2.5 rounded bg-[var(--bg)] border border-[var(--border)]">
-                  Exports a centered 1024×1024 transparent image of the hand using the violet-purple aesthetic with bright green-yellow highlights.
-                </div>
+                <MenuSection title="Format Info & Resolution" icon={FileCode} defaultOpen={false}>
+                  <div className="text-[11px] text-[var(--fg-muted)] leading-relaxed">
+                    Exports a centered 1024×1024 transparent image of the hand using the violet-purple aesthetic with bright green-yellow highlights.
+                  </div>
+                </MenuSection>
               </div>
             )}
 
             {/* PANEL CONTENT 3: Pose-to-Pose Animation */}
             {activeRightPanel === 'export-anim' && (
-              <div className="flex flex-col gap-3 text-xs">
-                {/* From / To Poses */}
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-[var(--fg-muted)] font-medium">From Pose:</label>
-                    <select
-                      value={animFromKey}
-                      onChange={e => setAnimFromKey(e.target.value)}
-                      className="bg-[var(--bg)] text-[var(--fg)] border border-[var(--border)] rounded px-2 py-1 text-xs focus:border-[var(--accent)] outline-none"
-                    >
-                      <option value="Neutral flat (default)">Neutral flat (default)</option>
-                      <optgroup label="Presets">
-                        {Object.keys(PRESET_POSES)
-                          .filter(k => k !== 'Neutral flat (default)')
-                          .map(k => (
-                            <option key={k} value={k}>
-                              {k}
-                            </option>
-                          ))}
-                      </optgroup>
-                      {Object.keys(savedPoses).length > 0 && (
-                        <optgroup label="Saved">
-                          {Object.keys(savedPoses).map(k => (
-                            <option key={k} value={k}>
-                              {k}
-                            </option>
-                          ))}
+              <div className="flex flex-col gap-2.5 text-xs">
+                {/* Section 1: Transition Pose Selectors */}
+                <MenuSection title="Transition Pose Selectors" icon={Film} defaultOpen={true}>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-[var(--fg-muted)] font-medium">From Pose:</label>
+                      <select
+                        value={animFromKey}
+                        onChange={e => {
+                          setAnimFromKey(e.target.value);
+                          setActiveFrameIndex(null);
+                        }}
+                        className="bg-[var(--bg)] text-[var(--fg)] border border-[var(--border)] rounded px-2 py-1 text-xs focus:border-[#adff2f] outline-none"
+                      >
+                        <option value="Neutral flat (default)">Neutral flat (default)</option>
+                        <optgroup label="Presets">
+                          {Object.keys(PRESET_POSES)
+                            .filter(k => k !== 'Neutral flat (default)')
+                            .map(k => (
+                              <option key={k} value={k}>
+                                {k}
+                              </option>
+                            ))}
                         </optgroup>
-                      )}
-                    </select>
-                  </div>
+                        {Object.keys(savedPoses).length > 0 && (
+                          <optgroup label="Saved">
+                            {Object.keys(savedPoses).map(k => (
+                              <option key={k} value={k}>
+                                {k}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </select>
+                    </div>
 
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-[var(--fg-muted)] font-medium">To Pose:</label>
-                    <select
-                      value={animToKey}
-                      onChange={e => setAnimToKey(e.target.value)}
-                      className="bg-[var(--bg)] text-[var(--fg)] border border-[var(--border)] rounded px-2 py-1 text-xs focus:border-[var(--accent)] outline-none"
-                    >
-                      <option value="Neutral flat (default)">Neutral flat (default)</option>
-                      <optgroup label="Presets">
-                        {Object.keys(PRESET_POSES)
-                          .filter(k => k !== 'Neutral flat (default)')
-                          .map(k => (
-                            <option key={k} value={k}>
-                              {k}
-                            </option>
-                          ))}
-                      </optgroup>
-                      {Object.keys(savedPoses).length > 0 && (
-                        <optgroup label="Saved">
-                          {Object.keys(savedPoses).map(k => (
-                            <option key={k} value={k}>
-                              {k}
-                            </option>
-                          ))}
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-[var(--fg-muted)] font-medium">To Pose:</label>
+                      <select
+                        value={animToKey}
+                        onChange={e => {
+                          setAnimToKey(e.target.value);
+                          setActiveFrameIndex(null);
+                        }}
+                        className="bg-[var(--bg)] text-[var(--fg)] border border-[var(--border)] rounded px-2 py-1 text-xs focus:border-[#adff2f] outline-none"
+                      >
+                        <option value="Neutral flat (default)">Neutral flat (default)</option>
+                        <optgroup label="Presets">
+                          {Object.keys(PRESET_POSES)
+                            .filter(k => k !== 'Neutral flat (default)')
+                            .map(k => (
+                              <option key={k} value={k}>
+                                {k}
+                              </option>
+                            ))}
                         </optgroup>
-                      )}
-                    </select>
+                        {Object.keys(savedPoses).length > 0 && (
+                          <optgroup label="Saved">
+                            {Object.keys(savedPoses).map(k => (
+                              <option key={k} value={k}>
+                                {k}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </select>
+                    </div>
                   </div>
-                </div>
+                </MenuSection>
 
-                {/* Duration & FPS */}
-                <div className="grid grid-cols-2 gap-2 items-center">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-[var(--fg-muted)]">Duration ({animDuration}s):</label>
-                    <input
-                      type="range"
-                      min={0.2}
-                      max={4.0}
-                      step={0.1}
-                      value={animDuration}
-                      onChange={e => setAnimDuration(Number(e.target.value))}
-                      className="accent-[var(--accent)] h-1.5 cursor-pointer"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-[var(--fg-muted)]">Framerate (FPS):</label>
-                    <select
-                      value={animFps}
-                      onChange={e => setAnimFps(Number(e.target.value))}
-                      className="bg-[var(--bg)] text-[var(--fg)] border border-[var(--border)] rounded px-2 py-1 text-xs focus:border-[var(--accent)] outline-none"
-                    >
-                      {[10, 15, 20, 24, 30].map(f => (
-                        <option key={f} value={f}>
-                          {f} fps
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Preview Transition Toggle Button */}
-                <button
-                  onClick={togglePreview}
-                  className={`flex items-center justify-center gap-2 px-3 py-2 rounded text-xs font-semibold transition-all shadow-sm ${
-                    isPreviewing
-                      ? 'bg-purple-600/30 border border-purple-500 text-purple-200 animate-pulse'
-                      : 'bg-[var(--bg)] border border-[var(--border)] hover:border-[#adff2f] text-[var(--fg)] hover:text-[#adff2f]'
-                  }`}
-                >
-                  {isPreviewing ? (
-                    <>
-                      <Square className="w-3.5 h-3.5 fill-red-400 text-red-400" />
-                      <span>Stop Live Preview</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-3.5 h-3.5 fill-[#adff2f] text-[#adff2f]" />
-                      <span>Preview Transition</span>
-                    </>
-                  )}
-                </button>
-
-                {/* Export Buttons */}
-                <div className="grid grid-cols-3 gap-1.5 pt-1 border-t border-[var(--border)]">
-                  <button
-                    onClick={handleExportGif}
-                    disabled={isExporting || isPreviewing}
-                    className="flex items-center justify-center gap-1 px-2 py-1.5 rounded bg-[var(--bg)] border border-[var(--border)] hover:border-[var(--accent)] text-[var(--fg)] hover:text-[var(--accent)] text-xs font-medium transition-all shadow-xs disabled:opacity-40"
-                    title="Save client-side transparent animated GIF"
-                  >
-                    <Film className="w-3 h-3 text-[#adff2f]" />
-                    Save GIF
-                  </button>
-                  <button
-                    onClick={handleExportApng}
-                    disabled={isExporting || isPreviewing}
-                    className="flex items-center justify-center gap-1 px-2 py-1.5 rounded bg-[var(--bg)] border border-[var(--border)] hover:border-[var(--accent)] text-[var(--fg)] hover:text-[var(--accent)] text-xs font-medium transition-all shadow-xs disabled:opacity-40"
-                    title="Save high-fidelity animated PNG (APNG)"
-                  >
-                    <ImageIcon className="w-3 h-3 text-purple-400" />
-                    Save APNG
-                  </button>
-                  <button
-                    onClick={handleExportZip}
-                    disabled={isExporting || isPreviewing}
-                    className="flex items-center justify-center gap-1 px-2 py-1.5 rounded bg-[var(--bg)] border border-[var(--border)] hover:border-[var(--accent)] text-[var(--fg)] hover:text-[var(--accent)] text-xs font-medium transition-all shadow-xs disabled:opacity-40"
-                    title="Save ZIP archive with numbered PNG frames and animation.json manifest"
-                  >
-                    <FileArchive className="w-3 h-3 text-blue-400" />
-                    Save ZIP
-                  </button>
-                </div>
-
-                {/* Progress / Status Indicator */}
-                {animProgress && (
-                  <div className="flex flex-col gap-1 p-2 rounded bg-[var(--bg)] border border-[var(--border)] text-xs">
+                {/* Section 2: Keyframe Filmstrip Preview Carousel */}
+                <MenuSection title="Keyframe Filmstrip Preview" icon={Sparkles} badge={`${filmstripFrames.length} frames`} defaultOpen={true}>
+                  <div className="flex flex-col gap-1.5">
                     <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-[var(--accent)] font-medium">{animProgress.stage}</span>
-                      <span className="font-mono text-[var(--fg-muted)]">
-                        {animProgress.current} / {animProgress.total}
-                      </span>
+                      <span className="text-[var(--fg-muted)]">Click thumbnail to preview frame on stage:</span>
+                      {activeFrameIndex !== null && (
+                        <button
+                          onClick={() => setActiveFrameIndex(null)}
+                          className="text-[10px] text-purple-400 hover:underline"
+                        >
+                          Clear Selection
+                        </button>
+                      )}
                     </div>
-                    <div className="w-full h-1.5 bg-[var(--panel)] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-purple-500 to-[#adff2f] transition-all duration-150"
-                        style={{ width: `${Math.round((animProgress.current / animProgress.total) * 100)}%` }}
-                      ></div>
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5 scrollbar-thin">
+                      {filmstripFrames.map((frame, idx) => {
+                        const isSelected = activeFrameIndex === idx;
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              setActiveFrameIndex(idx);
+                              setState(frame.pose);
+                              setCopiedNotification(`Previewing frame ${frame.label} (${frame.timeSec})`);
+                              setTimeout(() => setCopiedNotification(null), 1500);
+                            }}
+                            className={`shrink-0 flex flex-col items-center p-1.5 rounded-lg bg-[var(--bg)] border transition-all ${
+                              isSelected
+                                ? 'border-[#adff2f] ring-2 ring-[#adff2f]/30 bg-[#adff2f]/10 shadow-md'
+                                : 'border-[var(--border)] hover:border-purple-400 hover:bg-purple-500/10'
+                            }`}
+                            title={`Frame ${frame.label} (${frame.timeSec}) — Click to preview on stage`}
+                          >
+                            <div className="w-14 h-14 rounded bg-[#120e1a] border border-purple-500/30 flex items-center justify-center overflow-hidden">
+                              <svg
+                                viewBox="-5 -9.2 10 10.5"
+                                className="w-full h-full p-0.5"
+                                dangerouslySetInnerHTML={{ __html: frame.markup }}
+                              />
+                            </div>
+                            <span className="text-[10px] font-mono font-bold mt-1 text-[var(--fg)]">
+                              {frame.label}
+                            </span>
+                            <span className="text-[8px] font-mono text-[var(--fg-muted)]">
+                              {frame.timeSec}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
-                )}
+                </MenuSection>
+
+                {/* Section 3: Timing & Rate Settings */}
+                <MenuSection title="Timing & Live Preview" icon={Play} defaultOpen={true}>
+                  <div className="grid grid-cols-2 gap-2 items-center">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-[var(--fg-muted)]">Duration ({animDuration}s):</label>
+                      <input
+                        type="range"
+                        min={0.2}
+                        max={4.0}
+                        step={0.1}
+                        value={animDuration}
+                        onChange={e => setAnimDuration(Number(e.target.value))}
+                        className="accent-[#adff2f] h-1.5 cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-[var(--fg-muted)]">Framerate (FPS):</label>
+                      <select
+                        value={animFps}
+                        onChange={e => setAnimFps(Number(e.target.value))}
+                        className="bg-[var(--bg)] text-[var(--fg)] border border-[var(--border)] rounded px-2 py-1 text-xs focus:border-[#adff2f] outline-none"
+                      >
+                        {[10, 15, 20, 24, 30].map(f => (
+                          <option key={f} value={f}>
+                            {f} fps
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={togglePreview}
+                    className={`flex items-center justify-center gap-2 px-3 py-2 rounded text-xs font-semibold transition-all shadow-sm ${
+                      isPreviewing
+                        ? 'bg-purple-600/30 border border-purple-500 text-purple-200 animate-pulse'
+                        : 'bg-[var(--panel)] border border-[var(--border)] hover:border-[#adff2f] text-[var(--fg)] hover:text-[#adff2f]'
+                    }`}
+                  >
+                    {isPreviewing ? (
+                      <>
+                        <Square className="w-3.5 h-3.5 fill-red-400 text-red-400" />
+                        <span>Stop Live Preview</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-3.5 h-3.5 fill-[#adff2f] text-[#adff2f]" />
+                        <span>Preview Transition</span>
+                      </>
+                    )}
+                  </button>
+                </MenuSection>
+
+                {/* Section 4: Export Encoders */}
+                <MenuSection title="Export Animation Encoders" icon={Download} defaultOpen={true}>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <button
+                      onClick={handleExportGif}
+                      disabled={isExporting || isPreviewing}
+                      className="flex items-center justify-center gap-1 px-2 py-1.5 rounded bg-[var(--bg)] border border-[var(--border)] hover:border-[#adff2f] text-[var(--fg)] hover:text-[#adff2f] text-xs font-medium transition-all shadow-xs disabled:opacity-40"
+                      title="Save client-side transparent animated GIF"
+                    >
+                      <Film className="w-3 h-3 text-[#adff2f]" />
+                      Save GIF
+                    </button>
+                    <button
+                      onClick={handleExportApng}
+                      disabled={isExporting || isPreviewing}
+                      className="flex items-center justify-center gap-1 px-2 py-1.5 rounded bg-[var(--bg)] border border-[var(--border)] hover:border-purple-400 text-[var(--fg)] hover:text-purple-400 text-xs font-medium transition-all shadow-xs disabled:opacity-40"
+                      title="Save high-fidelity animated PNG (APNG)"
+                    >
+                      <ImageIcon className="w-3 h-3 text-purple-400" />
+                      Save APNG
+                    </button>
+                    <button
+                      onClick={handleExportZip}
+                      disabled={isExporting || isPreviewing}
+                      className="flex items-center justify-center gap-1 px-2 py-1.5 rounded bg-[var(--bg)] border border-[var(--border)] hover:border-blue-400 text-[var(--fg)] hover:text-blue-400 text-xs font-medium transition-all shadow-xs disabled:opacity-40"
+                      title="Save ZIP archive with numbered PNG frames and animation.json manifest"
+                    >
+                      <FileArchive className="w-3 h-3 text-blue-400" />
+                      Save ZIP
+                    </button>
+                  </div>
+
+                  {/* Progress / Status Indicator */}
+                  {animProgress && (
+                    <div className="flex flex-col gap-1 p-2 rounded bg-[var(--bg)] border border-[var(--border)] text-xs">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-[#adff2f] font-medium">{animProgress.stage}</span>
+                        <span className="font-mono text-[var(--fg-muted)]">
+                          {animProgress.current} / {animProgress.total}
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 bg-[var(--panel)] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-purple-500 to-[#adff2f] transition-all duration-150"
+                          style={{ width: `${Math.round((animProgress.current / animProgress.total) * 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
+                </MenuSection>
               </div>
             )}
           </div>
